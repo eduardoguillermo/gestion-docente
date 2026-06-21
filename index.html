@@ -388,7 +388,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="card">
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Fecha</th><th>Materia</th><th>Tema</th><th>Horas</th><th>Tipo</th><th>Valor/h</th><th>Devengado</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Materia</th><th>Tema</th><th>Horas</th><th>Módulo</th><th>Tipo hora</th><th>Valor/h</th><th>Devengado</th><th>Estado</th><th></th></tr></thead>
             <tbody id="clases-tbody"></tbody>
           </table>
         </div>
@@ -682,10 +682,18 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <label>Tipos de hora y valores</label>
       <div style="background:var(--bg2);border:1px solid var(--brd2);border-radius:var(--radius);padding:12px;margin-top:4px">
         <div id="mat-tipos-lista" style="margin-bottom:10px"></div>
+        <!-- Predefinidos -->
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Predefinidos:</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addTipoHoraPredefinido('Hora Medicina')">+ Hora Medicina</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addTipoHoraPredefinido('Hora Licenciatura')">+ Hora Licenciatura</button>
+          </div>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 120px auto;gap:8px;align-items:end">
           <div>
             <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Nombre del tipo</div>
-            <input id="tipo-nombre-input" placeholder="Ej: Teórica, Práctica, Tutoría…" style="margin:0">
+            <input id="tipo-nombre-input" placeholder="Ej: Teórica, Práctica…" style="margin:0">
           </div>
           <div>
             <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Valor/hora (UYU)</div>
@@ -693,7 +701,28 @@ tr:hover td { background: rgba(255,255,255,0.02); }
           </div>
           <button class="btn btn-primary btn-sm" onclick="addTipoHora()" style="height:36px;margin-bottom:0">+ Agregar</button>
         </div>
-        <div class="text-muted text-sm" style="margin-top:8px">Podés definir tantos tipos como necesites. Al registrar una clase elegís el tipo.</div>
+        <div class="text-muted text-sm" style="margin-top:8px">Los módulos usarán estos tipos. Cada módulo tiene un tipo de hora asignado.</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Módulos temáticos</label>
+      <div style="background:var(--bg2);border:1px solid var(--brd2);border-radius:var(--radius);padding:12px;margin-top:4px">
+        <div id="mat-modulos-lista" style="margin-bottom:10px"></div>
+        <div style="display:grid;grid-template-columns:1fr 160px auto;gap:8px;align-items:end">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Nombre del módulo</div>
+            <input id="modulo-nombre-input" placeholder="Ej: Módulo 1 — Introducción" style="margin:0">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Tipo de hora</div>
+            <select id="modulo-tipo-input" style="margin:0">
+              <option value="">— elegir tipo —</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addModulo()" style="height:36px;margin-bottom:0">+ Agregar</button>
+        </div>
+        <div class="text-muted text-sm" style="margin-top:8px">Las clases se asocian a un módulo. El tipo de hora del módulo determina el devengado.</div>
       </div>
     </div>
 
@@ -728,14 +757,18 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <input type="number" id="cl-horas" min="0" step="0.5" placeholder="Se calcula automático">
       </div>
       <div class="form-group">
-        <label>Tipo de hora</label>
-        <select id="cl-tipo-hora" onchange="actualizarValorHoraClase()">
-          <option value="">— sin tipo —</option>
+        <label>Módulo</label>
+        <select id="cl-modulo" onchange="actualizarValorHoraClase()">
+          <option value="">— sin módulo —</option>
         </select>
       </div>
     </div>
     <div id="cl-valor-hora-preview" style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;display:none">
       <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="text-muted text-sm">Tipo de hora:</span>
+        <span class="fw600" style="color:var(--acc)" id="cl-tipo-hora-txt">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
         <span class="text-muted text-sm">Valor hora:</span>
         <span class="fw600" style="color:var(--amb)" id="cl-valor-hora-txt">—</span>
       </div>
@@ -1516,6 +1549,12 @@ function getSelectedColor() {
 
 let _tiposEditando = [];
 let _horariosEditando = [];
+let _modulosEditando = [];
+
+const TIPOS_HORA_PREDEFINIDOS = [
+  { nombre: 'Hora Medicina',     valor: 0 },
+  { nombre: 'Hora Licenciatura', valor: 0 }
+];
 
 const DIAS_SEMANA = { 0:'Domingo', 1:'Lunes', 2:'Martes', 3:'Miércoles', 4:'Jueves', 5:'Viernes', 6:'Sábado' };
 
@@ -1523,14 +1562,33 @@ function renderTiposLista() {
   const el = document.getElementById('mat-tipos-lista');
   if (!_tiposEditando.length) {
     el.innerHTML = '<div class="text-muted text-sm" style="padding:4px 0 8px">Sin tipos definidos — agregá al menos uno.</div>';
+    actualizarSelectModuloTipo();
     return;
   }
   el.innerHTML = _tiposEditando.map((t,i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--brd)">
       <div style="flex:1;font-size:13px">${t.nombre}</div>
-      <div style="font-size:13px;color:var(--amb);font-weight:600;min-width:90px;text-align:right">${fmtMonto(t.valor)}/h</div>
-      <button class="btn-icon" style="color:var(--red);flex-shrink:0" onclick="_tiposEditando.splice(${i},1);renderTiposLista()">✕</button>
+      <div style="font-size:13px;color:var(--amb);font-weight:600;min-width:100px;text-align:right">${t.valor>0?fmtMonto(t.valor)+'/h':'<span style=\'color:var(--red);font-size:11px\'>Sin valor — completar</span>'}</div>
+      <button class="btn-icon" style="color:var(--red);flex-shrink:0" onclick="_tiposEditando.splice(${i},1);renderTiposLista();renderModulosLista()">✕</button>
     </div>`).join('');
+  actualizarSelectModuloTipo();
+}
+
+function addTipoHoraPredefinido(nombre) {
+  const existe = _tiposEditando.find(t=>t.nombre===nombre);
+  if (existe) {
+    // Ya existe — poner foco en valor para completarlo
+    document.getElementById('tipo-nombre-input').value = nombre;
+    document.getElementById('tipo-valor-input').focus();
+    toast(`"${nombre}" ya existe — actualizá el valor si querés`, 'err');
+    return;
+  }
+  _tiposEditando.push({ id: uid(), nombre, valor: 0 });
+  document.getElementById('tipo-nombre-input').value = nombre;
+  document.getElementById('tipo-valor-input').value = '';
+  document.getElementById('tipo-valor-input').focus();
+  renderTiposLista();
+  toast(`"${nombre}" agregado — ingresá el valor/hora y presioná + Agregar`);
 }
 
 function addTipoHora() {
@@ -1538,14 +1596,59 @@ function addTipoHora() {
   const valor = parseFloat(document.getElementById('tipo-valor-input').value)||0;
   if (!nombre) { toast('Ingresá el nombre del tipo','err'); return; }
   if (valor <= 0) { toast('Ingresá un valor mayor a 0','err'); return; }
-  if (_tiposEditando.find(t=>t.nombre.toLowerCase()===nombre.toLowerCase())) {
-    toast('Ya existe ese tipo','err'); return;
+  const existeIdx = _tiposEditando.findIndex(t=>t.nombre.toLowerCase()===nombre.toLowerCase());
+  if (existeIdx >= 0) {
+    // Actualizar valor del existente (caso predefinido sin valor)
+    _tiposEditando[existeIdx].valor = valor;
+    document.getElementById('tipo-nombre-input').value = '';
+    document.getElementById('tipo-valor-input').value = '';
+    renderTiposLista();
+    toast('Valor actualizado');
+    return;
   }
   _tiposEditando.push({ id: uid(), nombre, valor });
   document.getElementById('tipo-nombre-input').value = '';
   document.getElementById('tipo-valor-input').value = '';
   renderTiposLista();
 }
+
+// ---- MÓDULOS ----
+function actualizarSelectModuloTipo() {
+  const sel = document.getElementById('modulo-tipo-input');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— elegir tipo —</option>' +
+    _tiposEditando.map(t=>`<option value="${t.id}" ${t.id===cur?'selected':''}>${t.nombre}${t.valor>0?' — '+fmtMonto(t.valor)+'/h':' ⚠ sin valor'}</option>`).join('');
+}
+
+function renderModulosLista() {
+  const el = document.getElementById('mat-modulos-lista');
+  if (!_modulosEditando.length) {
+    el.innerHTML = '<div class="text-muted text-sm" style="padding:4px 0 8px">Sin módulos — las clases se asignarán directamente a la materia.</div>';
+    return;
+  }
+  el.innerHTML = _modulosEditando.map((m,i) => {
+    const tipo = _tiposEditando.find(t=>t.id===m.tipoId);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--brd)">
+      <div style="font-size:11px;color:var(--muted);min-width:20px;font-weight:700">${i+1}</div>
+      <div style="flex:1;font-size:13px;font-weight:500">${m.nombre}</div>
+      <span style="font-size:11px;background:var(--bg3);border:1px solid var(--brd2);border-radius:20px;padding:2px 8px;white-space:nowrap;color:${tipo?'var(--acc)':'var(--muted)'}">${tipo?tipo.nombre:'Sin tipo'}</span>
+      <div style="font-size:12px;color:var(--amb);min-width:70px;text-align:right">${tipo&&tipo.valor>0?fmtMonto(tipo.valor)+'/h':'—'}</div>
+      <button class="btn-icon" style="color:var(--red);flex-shrink:0" onclick="_modulosEditando.splice(${i},1);renderModulosLista()">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function addModulo() {
+  const nombre = document.getElementById('modulo-nombre-input').value.trim();
+  const tipoId = document.getElementById('modulo-tipo-input').value;
+  if (!nombre) { toast('Ingresá el nombre del módulo','err'); return; }
+  _modulosEditando.push({ id: uid(), nombre, tipoId: tipoId||null });
+  document.getElementById('modulo-nombre-input').value = '';
+  renderModulosLista();
+}
+
+
 
 function renderHorarioLista() {
   const el = document.getElementById('mat-horario-lista');
@@ -1604,25 +1707,29 @@ function openModalMateria(id) {
     document.getElementById('mat-horas-prev').value = m.horasPrev || '';
     document.getElementById('mat-notas').value = m.notas || '';
     _tiposEditando = JSON.parse(JSON.stringify(m.tiposHora || []));
-    // Compatibilidad: si tenía horario como string, limpiar
     _horariosEditando = JSON.parse(JSON.stringify(m.horarios || []));
+    _modulosEditando = JSON.parse(JSON.stringify(m.modulos || []));
     buildColorRow(m.color || COLORES[0]);
   } else {
     ['mat-nombre','mat-horas-prev','mat-notas'].forEach(i=>document.getElementById(i).value='');
     _tiposEditando = [];
     _horariosEditando = [];
+    _modulosEditando = [];
     buildColorRow(COLORES[0]);
   }
   document.getElementById('tipo-nombre-input').value = '';
   document.getElementById('tipo-valor-input').value = '';
+  document.getElementById('modulo-nombre-input').value = '';
   renderTiposLista();
   renderHorarioLista();
+  renderModulosLista();
   openModal('modal-materia');
 }
 
 function guardarMateria() {
   const id = document.getElementById('mat-id').value || uid();
   if (!_tiposEditando.length) { toast('Agregá al menos un tipo de hora','err'); return; }
+  if (_tiposEditando.some(t=>t.valor<=0)) { toast('Todos los tipos deben tener un valor mayor a 0','err'); return; }
   const obj = {
     id,
     nombre: document.getElementById('mat-nombre').value.trim(),
@@ -1630,7 +1737,8 @@ function guardarMateria() {
     horasPrev: parseFloat(document.getElementById('mat-horas-prev').value)||0,
     tiposHora: _tiposEditando,
     horarios: _horariosEditando,
-    horario: horarioToString(_horariosEditando), // string legible para compatibilidad
+    horario: horarioToString(_horariosEditando),
+    modulos: _modulosEditando,
     color: getSelectedColor(),
     notas: document.getElementById('mat-notas').value.trim()
   };
@@ -1652,9 +1760,15 @@ function renderMaterias() {
     const pct = m.horasPrev > 0 ? Math.min(100, Math.round(horasDadas/m.horasPrev*100)) : 0;
     const devengado = devengadoMateria(m.id);
     const tipos = m.tiposHora || [];
+    const modulos = m.modulos || [];
     const tiposHtml = tipos.map(t =>
       `<span style="background:var(--bg3);border:1px solid var(--brd2);border-radius:20px;padding:2px 10px;font-size:11px;white-space:nowrap">${t.nombre} <span style="color:var(--amb)">${fmtMonto(t.valor)}/h</span></span>`
     ).join('');
+    const modulosHtml = modulos.length ? `<div class="text-sm text-muted" style="margin-top:6px">
+      <span class="fw600">${modulos.length} módulo${modulos.length>1?'s':''}:</span> ${modulos.map((mod,i)=>{
+        const tipo=tipos.find(t=>t.id===mod.tipoId);
+        return `<span style="margin-left:6px">${i+1}. ${mod.nombre}${tipo?' <span style=\'color:var(--acc)\'>(${tipo.nombre})</span>':''}`;
+      }).join('')}</div>` : '';
     return `
     <div class="card mb16">
       <div class="flex-center gap16">
@@ -1666,6 +1780,7 @@ function renderMaterias() {
           </div>
           <div class="text-sm text-muted mb8">${m.horario||'Horario no definido'}</div>
           <div class="flex gap8 mb8" style="flex-wrap:wrap">${tiposHtml || '<span class="text-muted text-sm">Sin tipos de hora</span>'}</div>
+          ${modulosHtml}
           <div class="flex-center gap16">
             <span class="text-sm"><b>${horasDadas}</b> / ${m.horasPrev} hs</span>
             <span class="text-sm text-muted">Devengado: <b style="color:var(--amb)">${fmtMonto(devengado)}</b></span>
@@ -1694,20 +1809,27 @@ function delMateria(id) {
 function actualizarTiposHoraClase() {
   const matId = document.getElementById('cl-materia').value;
   const m = DB.materias.find(x=>x.id===matId);
-  const sel = document.getElementById('cl-tipo-hora');
-  const tipos = m?.tiposHora || [];
-  sel.innerHTML = '<option value="">— sin tipo —</option>' +
-    tipos.map(t=>`<option value="${t.id}" data-valor="${t.valor}">${t.nombre} — ${fmtMonto(t.valor)}/h</option>`).join('');
+  const sel = document.getElementById('cl-modulo');
+  const modulos = m?.modulos || [];
+  sel.innerHTML = '<option value="">— sin módulo —</option>' +
+    modulos.map(mod => {
+      const tipo = m?.tiposHora?.find(t=>t.id===mod.tipoId);
+      return `<option value="${mod.id}" data-tipo-id="${mod.tipoId||''}" data-valor="${tipo?.valor||0}">${mod.nombre}${tipo?' — '+tipo.nombre:''}${tipo?.valor?' ('+fmtMonto(tipo.valor)+'/h)':''}</option>`;
+    }).join('');
   actualizarValorHoraClase();
 }
 function actualizarValorHoraClase() {
-  const sel = document.getElementById('cl-tipo-hora');
-  const opt = sel.options[sel.selectedIndex];
-  const valor = parseFloat(opt?.dataset?.valor)||0;
+  const matId = document.getElementById('cl-materia').value;
+  const m = DB.materias.find(x=>x.id===matId);
+  const modId = document.getElementById('cl-modulo').value;
+  const mod = m?.modulos?.find(x=>x.id===modId);
+  const tipo = mod ? m?.tiposHora?.find(t=>t.id===mod.tipoId) : null;
+  const valor = tipo?.valor || 0;
   const horas = parseFloat(document.getElementById('cl-horas').value)||0;
   const prev = document.getElementById('cl-valor-hora-preview');
   if (valor > 0) {
     prev.style.display = 'block';
+    document.getElementById('cl-tipo-hora-txt').textContent = tipo?.nombre || '—';
     document.getElementById('cl-valor-hora-txt').textContent = fmtMonto(valor) + '/h';
     document.getElementById('cl-devengado-txt').textContent = horas > 0 ? fmtMonto(valor * horas) : '— (ingresá las horas)';
   } else {
@@ -1722,7 +1844,7 @@ function openModalClase(id, fecha) {
     document.getElementById('cl-fecha').value = c.fecha;
     document.getElementById('cl-materia').value = c.materiaId;
     actualizarTiposHoraClase();
-    document.getElementById('cl-tipo-hora').value = c.tipoHoraId || '';
+    document.getElementById('cl-modulo').value = c.moduloId || '';
     document.getElementById('cl-inicio').value = c.inicio || '';
     document.getElementById('cl-fin').value = c.fin || '';
     document.getElementById('cl-horas').value = c.horas || '';
@@ -1760,14 +1882,17 @@ function calcHorasAuto() {
 function guardarClase() {
   const id = document.getElementById('cl-id').value || uid();
   const matId = document.getElementById('cl-materia').value;
-  const tipoHoraId = document.getElementById('cl-tipo-hora').value;
+  const moduloId = document.getElementById('cl-modulo').value;
   const m = DB.materias.find(x=>x.id===matId);
-  const tipo = m?.tiposHora?.find(t=>t.id===tipoHoraId);
+  const mod = m?.modulos?.find(x=>x.id===moduloId);
+  const tipo = mod ? m?.tiposHora?.find(t=>t.id===mod.tipoId) : null;
   const horas = parseFloat(document.getElementById('cl-horas').value)||0;
   const obj = {
     id, fecha: document.getElementById('cl-fecha').value,
     materiaId: matId,
-    tipoHoraId: tipoHoraId || null,
+    moduloId: moduloId || null,
+    moduloNombre: mod?.nombre || '',
+    tipoHoraId: tipo?.id || null,
     tipoHoraNombre: tipo?.nombre || '',
     valorHoraSnapshot: tipo?.valor || 0,
     inicio: document.getElementById('cl-inicio').value,
@@ -1799,9 +1924,10 @@ function renderClases() {
       <td><span class="dot" style="background:${m?.color||'#999'}"></span> ${m?.nombre||'—'}</td>
       <td>${c.tema||'—'}</td>
       <td>${c.horas} hs</td>
-      <td><span class="badge badge-muted" style="font-size:10px">${c.tipoHoraNombre||'—'}</span></td>
+      <td><span class="badge badge-muted" style="font-size:10px">${c.moduloNombre||'—'}</span></td>
+      <td><span style="font-size:11px;color:var(--acc)">${c.tipoHoraNombre||'—'}</span></td>
       <td>${c.valorHoraSnapshot?fmtMonto(c.valorHoraSnapshot)+'/h':'—'}</td>
-      <td>${c.estado==='dada'&&dev?'<span style="color:var(--amb);font-weight:600">'+fmtMonto(dev)+'</span>':'—'}</td>
+      <td>${c.estado==='dada'&&c.valorHoraSnapshot?'<span style="color:var(--amb);font-weight:600">'+fmtMonto(c.horas*c.valorHoraSnapshot)+'</span>':'—'}</td>
       <td>${badgeEstado(c.estado)}</td>
       <td class="flex gap8">
         <button class="btn-icon" onclick="openModalClase('${c.id}')">✎</button>
