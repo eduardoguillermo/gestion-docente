@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.08</div>
+  <div class="splash-version">v1.09</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.08</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.09</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -296,7 +296,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       </div>
 
       <div class="card-row col4 mb16" id="kpi-row">
-        <div class="kpi"><div class="kpi-label">Horas previstas</div><div class="kpi-val acc" id="k-prev">—</div><div class="kpi-sub">Este período</div></div>
+        <div class="kpi"><div class="kpi-label">Horas previstas</div><div class="kpi-val acc" id="k-prev">—</div><div class="kpi-sub">Total</div></div>
         <div class="kpi"><div class="kpi-label">Horas dadas</div><div class="kpi-val grn" id="k-dadas">—</div><div class="kpi-sub">Confirmadas</div></div>
         <div class="kpi"><div class="kpi-label">Horas devengadas</div><div class="kpi-val amb" id="k-dev">—</div><div class="kpi-sub">A cobrar</div></div>
         <div class="kpi"><div class="kpi-label">Saldo</div><div class="kpi-val" id="k-saldo">—</div><div class="kpi-sub" id="k-saldo-sub">Devengado − percibido</div></div>
@@ -419,7 +419,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <div class="card-title">Pagos recibidos</div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Fecha</th><th>Período</th><th>Concepto</th><th>Monto (UYU)</th><th>Tipo</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto (UYU)</th><th>Tipo</th><th></th></tr></thead>
             <tbody id="pagos-tbody"></tbody>
           </table>
         </div>
@@ -429,14 +429,14 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <div class="card-title">Descuentos e impuestos</div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Fecha</th><th>Período</th><th>Concepto</th><th>Monto (UYU)</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto (UYU)</th><th>Notas</th><th></th></tr></thead>
             <tbody id="desc-tbody"></tbody>
           </table>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Detalle por materia y período</div>
+        <div class="card-title">Detalle por materia</div>
         <div id="liq-detalle"></div>
       </div>
     </div>
@@ -468,7 +468,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="card">
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Horas</th><th>Período</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Horas</th><th>Notas</th><th></th></tr></thead>
             <tbody id="act-tbody"></tbody>
           </table>
         </div>
@@ -869,7 +869,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <select id="pago-tipo">
           <option value="mensual">Mensual</option>
           <option value="parcial">Parcial</option>
-          <option value="final">Pago final período</option>
+          <option value="final">Pago final</option>
           <option value="adelanto">Adelanto</option>
           <option value="liquidacion">Liquidación</option>
         </select>
@@ -2004,7 +2004,6 @@ function renderMaterias() {
         <div style="flex:1">
           <div class="flex-center gap8 mb8">
             <span class="fw600" style="font-size:15px">${m.nombre}</span>
-            ${per?`<span class="badge badge-acc">${per.nombre}</span>`:'<span class="badge badge-muted">Sin período</span>'}
           </div>
           <div class="text-sm text-muted mb8">${m.horario||'Horario no definido'}</div>
           <div class="flex gap8 mb8" style="flex-wrap:wrap">${tiposHtml || '<span class="text-muted text-sm">Sin tipos de hora</span>'}</div>
@@ -2207,7 +2206,6 @@ function renderHoras() {
       <div class="flex-center gap8 mb16">
         <div class="dot" style="background:${m.color};width:12px;height:12px"></div>
         <span class="fw600">${m.nombre}</span>
-        ${per?`<span class="badge badge-acc" style="margin-left:4px">${per.nombre}</span>`:''}
       </div>
       <div class="card-row col4 mb16">
         <div class="kpi"><div class="kpi-label">Previstas</div><div class="kpi-val acc">${m.horasPrev}</div><div class="kpi-sub">hs totales</div></div>
@@ -2297,10 +2295,8 @@ function renderLiquidacion() {
   const tb = document.getElementById('pagos-tbody');
   const pp = [...pagos].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   tb.innerHTML = pp.length ? pp.map(p => {
-    const per = DB.periodos.find(x=>x.id===p.periodoId);
     return `<tr>
       <td>${fmtDate(p.fecha)}</td>
-      <td>${per?.nombre||'—'}</td>
       <td>${p.concepto||'—'}</td>
       <td style="color:var(--grn);font-weight:600">${fmtMonto(p.monto)}</td>
       <td>${p.tipo||'—'}</td>
@@ -2309,16 +2305,14 @@ function renderLiquidacion() {
         <button class="btn-icon" style="color:var(--red)" onclick="delPago('${p.id}')">✕</button>
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="6" class="text-muted" style="text-align:center;padding:20px">Sin pagos registrados</td></tr>`;
+  }).join('') : `<tr><td colspan="5" class="text-muted" style="text-align:center;padding:20px">Sin pagos registrados</td></tr>`;
 
   // Tabla descuentos
   const dtb = document.getElementById('desc-tbody');
   const dd = [...descs].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   dtb.innerHTML = dd.length ? dd.map(d => {
-    const per = DB.periodos.find(x=>x.id===d.periodoId);
     return `<tr>
       <td>${fmtDate(d.fecha)}</td>
-      <td>${per?.nombre||'—'}</td>
       <td>${d.concepto}</td>
       <td style="color:var(--red);font-weight:600">− ${fmtMonto(d.monto)}</td>
       <td class="text-muted">${d.notas||'—'}</td>
@@ -2327,18 +2321,16 @@ function renderLiquidacion() {
         <button class="btn-icon" style="color:var(--red)" onclick="delDescuento('${d.id}')">✕</button>
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="6" class="text-muted" style="text-align:center;padding:20px">Sin descuentos registrados</td></tr>`;
+  }).join('') : `<tr><td colspan="5" class="text-muted" style="text-align:center;padding:20px">Sin descuentos registrados</td></tr>`;
 
   // Detalle por materia
   document.getElementById('liq-detalle').innerHTML = rows.length ? `
     <div class="tbl-wrap"><table>
-      <thead><tr><th>Materia</th><th>Período</th><th>Hs dadas</th><th>Tipos de hora</th><th>Devengado</th></tr></thead>
+      <thead><tr><th>Materia</th><th>Hs dadas</th><th>Tipos de hora</th><th>Devengado</th></tr></thead>
       <tbody>${rows.map(r=>{
-        const per = DB.periodos.find(p=>p.id===r.m.periodoId);
         const tiposStr = (r.m.tiposHora||[]).map(t=>`${t.nombre}: ${fmtMonto(t.valor)}/h`).join(' · ') || '—';
         return `<tr>
           <td><span class="dot" style="background:${r.m.color}"></span> ${r.m.nombre}</td>
-          <td>${per?.nombre||'—'}</td>
           <td>${r.dadas} hs</td>
           <td class="text-muted" style="font-size:12px">${tiposStr}</td>
           <td style="color:var(--amb);font-weight:600">${fmtMonto(r.dev)}</td>
@@ -3076,7 +3068,6 @@ function renderActividades() {
       <td><span class="badge" style="background:${t.color}22;color:${t.color}">${t.label}</span></td>
       <td>${a.desc}</td>
       <td>${a.horas} hs${a.inicio?` <span class="text-muted" style="font-size:11px">(${a.inicio}–${a.fin})</span>`:''}</td>
-      <td class="text-muted">${per?.nombre||'—'}</td>
       <td class="text-muted" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.notas||'—'}</td>
       <td class="flex gap8">
         <button class="btn-icon" onclick="openModalActividad('${a.id}')">✎</button>
