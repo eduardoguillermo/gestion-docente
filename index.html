@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.11</div>
+  <div class="splash-version">v1.12</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.11</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.12</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -515,6 +515,25 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       </div>
 
       <div class="card-row col4 mb16" id="rein-kpis"></div>
+
+      <!-- Contador días con clase -->
+      <div class="card mb16">
+        <div class="section-header mb16" style="margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:0">Días con clase — ciclos 21 al 20</div>
+          <button class="btn btn-secondary btn-sm" onclick="toggleContadorClases()">⚙ Configurar importe</button>
+        </div>
+
+        <div id="contador-config" style="display:none;background:var(--bg2);border:1px solid var(--brd);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <label style="font-size:13px;color:var(--muted);white-space:nowrap">Importe por día (UYU):</label>
+            <input type="number" id="contador-importe" min="0" step="50" placeholder="0"
+              style="width:140px;margin:0" onchange="guardarImporteDia()">
+            <span class="text-muted text-sm">Se multiplica por los días con al menos una clase dada en el ciclo.</span>
+          </div>
+        </div>
+
+        <div id="contador-ciclos"></div>
+      </div>
 
       <div class="card">
         <div class="tbl-wrap">
@@ -1326,6 +1345,102 @@ function delReintegro(id) {
   save(); renderReintegros(); toast('Gasto eliminado');
 }
 
+// ============================================================
+// CONTADOR DÍAS CON CLASE (ciclos 21→20)
+// ============================================================
+const CONTADOR_KEY = 'docente_importe_dia';
+
+function toggleContadorClases() {
+  const el = document.getElementById('contador-config');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+function guardarImporteDia() {
+  const val = parseFloat(document.getElementById('contador-importe').value) || 0;
+  localStorage.setItem(CONTADOR_KEY, val);
+  renderContadorCiclos();
+}
+
+function getImporteDia() {
+  return parseFloat(localStorage.getItem(CONTADOR_KEY)) || 0;
+}
+
+function getCiclos21_20() {
+  const hoyDate = new Date();
+  let anio = hoyDate.getFullYear();
+  let mes = hoyDate.getMonth();
+  if (hoyDate.getDate() < 21) {
+    mes -= 1;
+    if (mes < 0) { mes = 11; anio -= 1; }
+  }
+  const ciclos = [];
+  for (let i = 0; i < 3; i++) {
+    let iniAnio = anio, iniMes = mes - i;
+    if (iniMes < 0) { iniMes += 12; iniAnio -= 1; }
+    let finAnio = iniAnio, finMes = iniMes + 1;
+    if (finMes > 11) { finMes = 0; finAnio += 1; }
+    const ini = `${iniAnio}-${pad(iniMes+1)}-21`;
+    const fin = `${finAnio}-${pad(finMes+1)}-20`;
+    const MESES_N = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const label = `21 ${MESES_N[iniMes]} → 20 ${MESES_N[finMes]} ${finAnio}`;
+    ciclos.push({ ini, fin, label });
+  }
+  return ciclos;
+}
+
+function diasConClaseDada(ini, fin) {
+  const dias = new Set(
+    DB.clases
+      .filter(c => c.estado === 'dada' && c.fecha >= ini && c.fecha <= fin)
+      .map(c => c.fecha)
+  );
+  return [...dias].sort();
+}
+
+function renderContadorCiclos() {
+  const el = document.getElementById('contador-ciclos');
+  if (!el) return;
+  const importe = getImporteDia();
+  const inp = document.getElementById('contador-importe');
+  if (inp && !inp.value && importe) inp.value = importe;
+  const ciclos = getCiclos21_20();
+  el.innerHTML = ciclos.map((ciclo, idx) => {
+    const dias = diasConClaseDada(ciclo.ini, ciclo.fin);
+    const total = dias.length * importe;
+    const esActual = idx === 0;
+    const detalleDias = dias.map(fecha => {
+      const clasesDelDia = DB.clases.filter(c => c.estado==='dada' && c.fecha===fecha);
+      const mats = [...new Set(clasesDelDia.map(c => DB.materias.find(m=>m.id===c.materiaId)?.nombre||'?'))];
+      return { fecha, mats };
+    });
+    return `
+    <div style="margin-bottom:${idx<2?'16px':'0'};padding-bottom:${idx<2?'16px':'0'};border-bottom:${idx<2?'1px solid var(--brd)':'none'}">
+      <div class="flex-center gap12 mb8">
+        <div>
+          <span class="fw600 text-sm">${ciclo.label}</span>
+          ${esActual?`<span class="badge badge-acc" style="margin-left:6px;font-size:10px">Ciclo actual</span>`:''}
+        </div>
+        <div class="ml-auto flex gap16">
+          <span class="text-sm"><b style="color:var(--acc);font-size:18px">${dias.length}</b> <span class="text-muted">días</span></span>
+          ${importe>0?`<span class="text-sm"><b style="color:var(--grn);font-size:18px">${fmtMonto(total)}</b></span>`:'<span class="text-muted text-sm">Configurá el importe/día</span>'}
+        </div>
+      </div>
+      ${dias.length ? `
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        ${detalleDias.map(d=>`
+          <div style="background:var(--bg3);border:1px solid var(--brd2);border-radius:8px;padding:4px 10px;font-size:11px">
+            <span class="fw600">${fmtDate(d.fecha)}</span>
+            <span class="text-muted" style="margin-left:4px">${d.mats.join(', ')}</span>
+          </div>`).join('')}
+      </div>
+      ${importe>0?`<div style="font-size:12px;color:var(--muted)">${dias.length} días × ${fmtMonto(importe)}/día = <b style="color:var(--grn)">${fmtMonto(total)}</b></div>`:''}
+      ` : `<div class="text-muted text-sm">Sin clases dadas en este ciclo</div>`}
+    </div>`;
+  }).join('');
+}
+
+
+
 function initFiltroAnioRein() {
   const el = document.getElementById('filtro-anio-rein');
   if (!el) return;
@@ -1336,6 +1451,7 @@ function initFiltroAnioRein() {
 
 function renderReintegros() {
   initFiltroAnioRein();
+  renderContadorCiclos();
   const filtroAnio = document.getElementById('filtro-anio-rein').value;
   const filtroEst  = document.getElementById('filtro-estado-rein').value;
 
