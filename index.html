@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.07</div>
+  <div class="splash-version">v1.08</div>
 </div>
 
 <div id="app" style="display:none">
@@ -261,10 +261,10 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     </svg>
     <div>
       <h1 id="hdr-nombre">Gestión Docente</h1>
-      <div class="header-sub" id="hdr-periodo">Sin período activo</div>
+      <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.07</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.08</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -290,9 +290,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="section-header mb16">
         <div class="section-title">Dashboard</div>
         <div class="flex gap8">
-          <select id="dash-periodo" style="width:auto" onchange="renderDashboard()">
-            <option value="">Todos los períodos</option>
-          </select>
+          <select id="dash-periodo" style="display:none" onchange="renderDashboard()"><option value="">Todos los períodos</option></select>
           <button class="btn btn-secondary btn-sm" onclick="exportExcel()">⬇ Excel</button>
         </div>
       </div>
@@ -399,9 +397,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div class="tab" id="tab-horas">
       <div class="section-header mb16">
         <div class="section-title">Horas</div>
-        <select id="filtro-periodo-horas" style="width:200px" onchange="renderHoras()">
-          <option value="">Todos los períodos</option>
-        </select>
+        <select id="filtro-periodo-horas" style="display:none" onchange="renderHoras()"><option value="">Todos los períodos</option></select>
       </div>
       <div id="horas-content"></div>
     </div>
@@ -411,9 +407,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="section-header mb16">
         <div class="section-title">Liquidación</div>
         <div class="flex gap8">
-          <select id="filtro-periodo-liq" style="width:200px" onchange="renderLiquidacion()">
-            <option value="">Todos los períodos</option>
-          </select>
+          <select id="filtro-periodo-liq" style="display:none" onchange="renderLiquidacion()"><option value="">Todos los períodos</option></select>
           <button class="btn btn-primary" onclick="openModal('modal-pago')">+ Registrar pago</button>
           <button class="btn btn-secondary" onclick="openModalDescuento()">− Descuento</button>
         </div>
@@ -452,7 +446,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="section-header mb16">
         <div class="section-title">Actividades no remuneradas</div>
         <div class="flex gap8">
-          <select id="filtro-periodo-act" style="width:auto" onchange="renderActividades()">
+          <select id="filtro-periodo-act" style="display:none" onchange="renderActividades()">
             <option value="">Todos los períodos</option>
           </select>
           <select id="filtro-tipo-act" style="width:auto" onchange="renderActividades()">
@@ -568,10 +562,10 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div class="form-group"><label>Institución / Universidad</label><input id="cfg-inst" placeholder="Universidad..."></div>
     <div class="form-group"><label>Moneda</label><select id="cfg-moneda"><option value="UYU">UYU — Peso uruguayo</option><option value="USD">USD — Dólar</option></select></div>
     <div class="divider"></div>
-    <div class="card-title">Períodos lectivos</div>
-    <div id="periodos-list" class="mb16"></div>
-    <button class="btn btn-secondary btn-sm" onclick="openModal('modal-periodo')">+ Nuevo período</button>
-    <div class="divider"></div>
+    <!-- Períodos ocultos — reservado para implementación futura -->
+    <div style="display:none">
+      <div id="periodos-list"></div>
+    </div>
     <div class="card-title">Biblioteca de módulos</div>
     <div class="text-muted text-sm mb8">Módulos reutilizables para asignar a cualquier materia.</div>
     <div id="bib-modulos-lista" class="mb8"></div>
@@ -690,7 +684,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     </div>
     <input type="hidden" id="mat-id">
     <div class="form-group"><label>Nombre de la materia</label><input id="mat-nombre" placeholder="Ej: Cálculo I"></div>
-    <div class="form-group"><label>Período</label><select id="mat-periodo"></select></div>
+    <div style="display:none"><select id="mat-periodo"></select></div>
     <div class="card-row col2">
       <div class="form-group"><label>Horas previstas totales</label><input type="number" id="mat-horas-prev" min="0" step="0.5" placeholder="60"></div>
     </div>
@@ -867,7 +861,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <input type="hidden" id="pago-id">
     <div class="card-row col2">
       <div class="form-group"><label>Fecha de pago</label><input type="date" id="pago-fecha"></div>
-      <div class="form-group"><label>Período</label><select id="pago-periodo"></select></div>
+      <div style="display:none"><select id="pago-periodo"></select></div>
     </div>
     <div class="card-row col2">
       <div class="form-group"><label>Monto (UYU)</label><input type="number" id="pago-monto" min="0" step="100" placeholder="0"></div>
@@ -899,7 +893,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <input type="hidden" id="desc-id">
     <div class="card-row col2">
       <div class="form-group"><label>Fecha</label><input type="date" id="desc-fecha"></div>
-      <div class="form-group"><label>Período</label><select id="desc-periodo"></select></div>
+      <div style="display:none"><select id="desc-periodo"></select></div>
     </div>
     <div class="form-group"><label>Concepto</label>
       <input id="desc-concepto" placeholder="Ej: IRPF, BPS, Aporte jubilatorio, Retención institucional...">
@@ -948,7 +942,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     </div>
     <div class="card-row col2">
       <div class="form-group"><label>Horas (calculadas)</label><input type="number" id="act-horas" min="0" step="0.5" placeholder="Automático"></div>
-      <div class="form-group"><label>Período</label><select id="act-periodo"></select></div>
+      <div style="display:none"><select id="act-periodo"></select></div>
     </div>
     <div class="form-group"><label>Notas</label><textarea id="act-notas" placeholder="Observaciones..."></textarea></div>
     <div style="background:rgba(148,163,184,0.08);border:1px solid var(--brd);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:4px">
