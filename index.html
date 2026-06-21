@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.10</div>
+  <div class="splash-version">v1.11</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.10</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.11</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -2589,7 +2589,15 @@ function nuevaActEnDia() {
 }
 function marcarDada(id) {
   const c = DB.clases.find(x=>x.id===id);
-  if (c) { c.estado='dada'; save(); renderCalendario(); calDiaClick(c.fecha); toast('Clase marcada como dada'); }
+  if (!c) return;
+  c.estado = 'dada';
+  save();
+  toast('Clase marcada como dada ✓');
+  // Refrescar vistas activas
+  if (document.getElementById('tab-clases').classList.contains('active')) renderClases();
+  if (document.getElementById('tab-horas').classList.contains('active')) renderHoras();
+  if (document.getElementById('tab-dashboard').classList.contains('active')) renderDashboard();
+  if (document.getElementById('tab-calendario').classList.contains('active')) { renderCalendario(); calDiaClick(c.fecha); }
 }
 
 // ============================================================
