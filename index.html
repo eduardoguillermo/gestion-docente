@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.04</div>
+  <div class="splash-version">v1.05</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.04</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.05</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -749,15 +749,10 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <!-- Desde biblioteca -->
         <div style="margin-bottom:10px">
           <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">Agregar desde biblioteca:</div>
-          <div style="display:grid;grid-template-columns:1fr 160px auto;gap:8px;align-items:end">
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">
             <div>
               <select id="modulo-bib-input" style="margin:0">
                 <option value="">— elegir módulo —</option>
-              </select>
-            </div>
-            <div>
-              <select id="modulo-tipo-input" style="margin:0">
-                <option value="">— tipo de hora —</option>
               </select>
             </div>
             <button class="btn btn-primary btn-sm" onclick="addModuloDesdeBiblioteca()" style="height:36px">+ Agregar</button>
@@ -1740,13 +1735,11 @@ function populateSelectBiblioteca() {
 
 // ---- MÓDULOS EN MATERIA ----
 function actualizarSelectModuloTipo() {
-  ['modulo-tipo-input','modulo-tipo-nuevo-input'].forEach(selId => {
-    const sel = document.getElementById(selId);
-    if (!sel) return;
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">— tipo de hora —</option>' +
-      _tiposEditando.map(t=>`<option value="${t.id}" ${t.id===cur?'selected':''}>${t.nombre}${t.valor>0?' — '+fmtMonto(t.valor)+'/h':' ⚠ sin valor'}</option>`).join('');
-  });
+  const sel = document.getElementById('modulo-tipo-nuevo-input');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— tipo de hora —</option>' +
+    _tiposEditando.map(t=>`<option value="${t.id}" ${t.id===cur?'selected':''}>${t.nombre}${t.valor>0?' — '+fmtMonto(t.valor)+'/h':' ⚠ sin valor'}</option>`).join('');
   populateSelectBiblioteca();
 }
 
@@ -1772,14 +1765,18 @@ function renderModulosLista() {
 
 function addModuloDesdeBiblioteca() {
   const bibId = document.getElementById('modulo-bib-input').value;
-  const tipoId = document.getElementById('modulo-tipo-input').value;
   if (!bibId) { toast('Elegí un módulo de la biblioteca','err'); return; }
   const bibMod = DB.bibliotecaModulos.find(m=>m.id===bibId);
   if (!bibMod) return;
   if (_modulosEditando.find(m=>m.bibId===bibId)) { toast('Ese módulo ya está en la materia','err'); return; }
-  _modulosEditando.push({ id: uid(), bibId, nombre: bibMod.nombre, desc: bibMod.desc||'', tipoId: tipoId||null });
+
+  // Resolver tipo automáticamente desde tipoDefecto del módulo
+  const TIPO_NOMBRE_MAP = { hora_medicina:'Hora Medicina', hora_licenciatura:'Hora Licenciatura' };
+  const nombreTipo = TIPO_NOMBRE_MAP[bibMod.tipoDefecto] || '';
+  const tipo = nombreTipo ? _tiposEditando.find(t=>t.nombre===nombreTipo) : null;
+
+  _modulosEditando.push({ id: uid(), bibId, nombre: bibMod.nombre, desc: bibMod.desc||'', tipoId: tipo?.id||null });
   document.getElementById('modulo-bib-input').value = '';
-  document.getElementById('modulo-tipo-input').value = '';
   renderModulosLista();
 }
 
@@ -1917,10 +1914,7 @@ function renderMaterias() {
       `<span style="background:var(--bg3);border:1px solid var(--brd2);border-radius:20px;padding:2px 10px;font-size:11px;white-space:nowrap">${t.nombre} <span style="color:var(--amb)">${fmtMonto(t.valor)}/h</span></span>`
     ).join('');
     const modulosHtml = modulos.length ? `<div class="text-sm text-muted" style="margin-top:6px">
-      <span class="fw600">${modulos.length} módulo${modulos.length>1?'s':''}:</span> ${modulos.map((mod,i)=>{
-        const tipo=tipos.find(t=>t.id===mod.tipoId);
-        return `<span style="margin-left:6px">${i+1}. ${mod.nombre}${tipo?' <span style=\'color:var(--acc)\'>(${tipo.nombre})</span>':''}`;
-      }).join('')}</div>` : '';
+      <span class="fw600">${modulos.length} módulo${modulos.length>1?'s':''}:</span> ${modulos.map((mod,i)=>`<span style="margin-left:6px">${i+1}. ${mod.nombre}</span>`).join('')}</div>` : '';
     return `
     <div class="card mb16">
       <div class="flex-center gap16">
@@ -1966,7 +1960,7 @@ function actualizarTiposHoraClase() {
   sel.innerHTML = '<option value="">— sin módulo —</option>' +
     modulos.map(mod => {
       const tipo = m?.tiposHora?.find(t=>t.id===mod.tipoId);
-      return `<option value="${mod.id}" data-tipo-id="${mod.tipoId||''}" data-valor="${tipo?.valor||0}">${mod.nombre}${tipo?' — '+tipo.nombre:''}${tipo?.valor?' ('+fmtMonto(tipo.valor)+'/h)':''}</option>`;
+      return `<option value="${mod.id}" data-tipo-id="${mod.tipoId||''}" data-valor="${tipo?.valor||0}">${mod.nombre}</option>`;
     }).join('');
   actualizarValorHoraClase();
 }
