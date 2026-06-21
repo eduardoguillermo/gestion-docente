@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.13</div>
+  <div class="splash-version">v1.14</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,11 +264,23 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.13</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.14</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
   </header>
+
+  <!-- Banner asistencia rápida -->
+  <div id="banner-asist" style="display:none;background:var(--bg2);border-bottom:1px solid var(--brd2);padding:10px 20px">
+    <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:12px">
+      <span style="font-size:18px">🏛</span>
+      <span class="text-sm" id="banner-asist-txt"></span>
+      <div class="flex gap8 ml-auto">
+        <button class="btn btn-primary btn-sm" id="banner-asist-btn" onclick="registrarAsistRapida()"></button>
+        <button class="btn btn-secondary btn-sm" onclick="descartarBannerAsist()">Ahora no</button>
+      </div>
+    </div>
+  </div>
 
   <nav>
     <button class="nav-btn active" onclick="goTab('dashboard')" id="nt-dashboard">📊 Dashboard</button>
@@ -1400,8 +1412,88 @@ function delReintegro(id) {
 }
 
 // ============================================================
-// ASISTENCIA — TIEMPO EN LA INSTITUCIÓN
+// BANNER ASISTENCIA RÁPIDA
 // ============================================================
+const BANNER_ASIST_KEY = 'docente_banner_asist_descartado';
+
+function verificarBannerAsistencia() {
+  const hoyStr = hoy();
+  const descartado = localStorage.getItem(BANNER_ASIST_KEY);
+
+  // Si ya descartó hoy, no mostrar
+  if (descartado === hoyStr) return;
+
+  const registroHoy = DB.asistencias.filter(a => a.fecha === hoyStr);
+  const tieneEntrada = registroHoy.length > 0;
+  const tieneSalida = registroHoy.some(a => a.salida);
+  const sinSalida = registroHoy.find(a => !a.salida || a.salida === '');
+
+  const banner = document.getElementById('banner-asist');
+  const txt = document.getElementById('banner-asist-txt');
+  const btn = document.getElementById('banner-asist-btn');
+
+  if (!tieneEntrada) {
+    // No hay registro hoy → ofrecer registrar llegada
+    txt.textContent = `¿Querés registrar tu llegada a la institución? (${formatHoraActual()})`;
+    btn.textContent = '✓ Registrar llegada';
+    banner.style.display = '';
+  } else if (sinSalida) {
+    // Hay entrada sin salida → ofrecer registrar salida
+    const entrada = sinSalida.entrada;
+    txt.textContent = `Llegaste a las ${entrada}. ¿Registrás tu salida ahora? (${formatHoraActual()})`;
+    btn.textContent = '✓ Registrar salida';
+    banner._asistId = sinSalida.id;
+    banner.style.display = '';
+  } else {
+    // Todo registrado
+    banner.style.display = 'none';
+  }
+}
+
+function formatHoraActual() {
+  const now = new Date();
+  return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+function registrarAsistRapida() {
+  const hoyStr = hoy();
+  const horaActual = formatHoraActual();
+  const banner = document.getElementById('banner-asist');
+  const registroHoy = DB.asistencias.filter(a => a.fecha === hoyStr);
+  const sinSalida = registroHoy.find(a => !a.salida || a.salida === '');
+
+  if (sinSalida) {
+    // Registrar salida en el registro existente
+    sinSalida.salida = horaActual;
+    const [h1,m1] = sinSalida.entrada.split(':').map(Number);
+    const [h2,m2] = horaActual.split(':').map(Number);
+    sinSalida.horas = Math.round(((h2*60+m2)-(h1*60+m1))/60*10)/10;
+    save();
+    toast(`Salida registrada: ${horaActual} · ${sinSalida.horas} hs`);
+  } else {
+    // Registrar nueva entrada
+    DB.asistencias.push({
+      id: uid(),
+      fecha: hoyStr,
+      entrada: horaActual,
+      salida: '',
+      horas: 0,
+      notas: ''
+    });
+    save();
+    toast(`Llegada registrada: ${horaActual}`);
+  }
+
+  banner.style.display = 'none';
+  if (document.getElementById('tab-asistencia').classList.contains('active')) renderAsistencia();
+}
+
+function descartarBannerAsist() {
+  localStorage.setItem(BANNER_ASIST_KEY, hoy());
+  document.getElementById('banner-asist').style.display = 'none';
+}
+
+
 function initAsistSelects() {
   const mesEl = document.getElementById('asist-mes');
   const anioEl = document.getElementById('asist-anio');
@@ -3769,6 +3861,7 @@ function init() {
   buildColorRow(COLORES[0]);
   renderDashboard();
   iniciarBackupAutomatico();
+  verificarBannerAsistencia();
 
   // Intercept config button
   document.querySelector('button[onclick*="modal-config"]').onclick = openConfigModal;
