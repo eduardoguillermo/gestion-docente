@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.05</div>
+  <div class="splash-version">v1.06</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.05</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.06</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -415,10 +415,11 @@ tr:hover td { background: rgba(255,255,255,0.02); }
             <option value="">Todos los períodos</option>
           </select>
           <button class="btn btn-primary" onclick="openModal('modal-pago')">+ Registrar pago</button>
+          <button class="btn btn-secondary" onclick="openModalDescuento()">− Descuento</button>
         </div>
       </div>
 
-      <div class="card-row col3 mb16" id="liq-kpis"></div>
+      <div class="card-row col4 mb16" id="liq-kpis"></div>
 
       <div class="card mb16">
         <div class="card-title">Pagos recibidos</div>
@@ -426,6 +427,16 @@ tr:hover td { background: rgba(255,255,255,0.02); }
           <table>
             <thead><tr><th>Fecha</th><th>Período</th><th>Concepto</th><th>Monto (UYU)</th><th>Tipo</th><th></th></tr></thead>
             <tbody id="pagos-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card mb16">
+        <div class="card-title">Descuentos e impuestos</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Período</th><th>Concepto</th><th>Monto (UYU)</th><th>Notas</th><th></th></tr></thead>
+            <tbody id="desc-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -879,6 +890,36 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   </div>
 </div>
 
+<!-- Descuento -->
+<div class="modal-backdrop" id="modal-descuento">
+  <div class="modal">
+    <div class="modal-title">Descuento / Retención
+      <button class="btn-icon" onclick="closeModal('modal-descuento')">✕</button>
+    </div>
+    <input type="hidden" id="desc-id">
+    <div class="card-row col2">
+      <div class="form-group"><label>Fecha</label><input type="date" id="desc-fecha"></div>
+      <div class="form-group"><label>Período</label><select id="desc-periodo"></select></div>
+    </div>
+    <div class="form-group"><label>Concepto</label>
+      <input id="desc-concepto" placeholder="Ej: IRPF, BPS, Aporte jubilatorio, Retención institucional...">
+    </div>
+    <div class="form-group"><label>Monto (UYU)</label>
+      <input type="number" id="desc-monto" min="0" step="10" placeholder="0">
+    </div>
+    <div class="form-group"><label>Notas</label>
+      <textarea id="desc-notas" placeholder="Observaciones..."></textarea>
+    </div>
+    <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--muted)">
+      Este monto se resta del percibido bruto para calcular el <b style="color:var(--txt)">percibido neto</b>.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-descuento')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarDescuento()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Actividad no remunerada -->
 <div class="modal-backdrop" id="modal-actividad">
   <div class="modal">
@@ -1158,14 +1199,61 @@ let DB = {
   feriados: [],
   actividades: [],
   reintegros: [],
-  bibliotecaModulos: []
+  bibliotecaModulos: [],
+  descuentos: []
 };
 
 const COLORES = ['#4f9ef8','#34d399','#fbbf24','#f87171','#a78bfa','#f472b6','#38bdf8','#fb923c','#a3e635','#2dd4bf'];
 
 // ============================================================
-// REINTEGROS DE GASTOS
+// DESCUENTOS
 // ============================================================
+function openModalDescuento(id) {
+  document.getElementById('desc-id').value = id || '';
+  populateSelectPeriodos('desc-periodo');
+  if (id) {
+    const d = DB.descuentos.find(x=>x.id===id);
+    document.getElementById('desc-fecha').value = d.fecha;
+    document.getElementById('desc-periodo').value = d.periodoId || '';
+    document.getElementById('desc-concepto').value = d.concepto || '';
+    document.getElementById('desc-monto').value = d.monto || '';
+    document.getElementById('desc-notas').value = d.notas || '';
+  } else {
+    document.getElementById('desc-fecha').value = hoy();
+    document.getElementById('desc-periodo').value = DB.periodos.find(p=>p.activo)?.id || '';
+    document.getElementById('desc-concepto').value = '';
+    document.getElementById('desc-monto').value = '';
+    document.getElementById('desc-notas').value = '';
+  }
+  openModal('modal-descuento');
+}
+
+function guardarDescuento() {
+  const id = document.getElementById('desc-id').value || uid();
+  const obj = {
+    id,
+    fecha: document.getElementById('desc-fecha').value,
+    periodoId: document.getElementById('desc-periodo').value,
+    concepto: document.getElementById('desc-concepto').value.trim(),
+    monto: parseFloat(document.getElementById('desc-monto').value) || 0,
+    notas: document.getElementById('desc-notas').value.trim()
+  };
+  if (!obj.fecha) { toast('Ingresá la fecha','err'); return; }
+  if (!obj.concepto) { toast('Ingresá el concepto','err'); return; }
+  if (!obj.monto) { toast('Ingresá el monto','err'); return; }
+  const idx = DB.descuentos.findIndex(d=>d.id===id);
+  if (idx>=0) DB.descuentos[idx]=obj; else DB.descuentos.push(obj);
+  save(); renderLiquidacion(); toast('Descuento guardado'); closeModal('modal-descuento');
+  document.getElementById('desc-id').value = '';
+}
+
+function delDescuento(id) {
+  if (!confirm('¿Eliminar este descuento?')) return;
+  DB.descuentos = DB.descuentos.filter(d=>d.id!==id);
+  save(); renderLiquidacion(); toast('Descuento eliminado');
+}
+
+
 const TIPOS_REIN = {
   combustible:  { label: 'Combustible',          color: '#fb923c' },
   transporte:   { label: 'Transporte / peaje',   color: '#38bdf8' },
@@ -2190,23 +2278,28 @@ function renderLiquidacion() {
   const filtro = document.getElementById('filtro-periodo-liq').value;
   const mats = filtro ? DB.materias.filter(m=>m.periodoId===filtro) : DB.materias;
   const pagos = filtro ? DB.pagos.filter(p=>p.periodoId===filtro) : DB.pagos;
+  const descs = filtro ? DB.descuentos.filter(d=>d.periodoId===filtro) : DB.descuentos;
 
-  let devTotal=0;
+  let devTotal = 0;
   const rows = mats.map(m=>{
     const dadas = horasDadasMateria(m.id);
     const dev = devengadoMateria(m.id);
     devTotal += dev;
     return {m, dadas, dev};
   });
-  const percTotal = pagos.reduce((s,p)=>s+p.monto,0);
-  const saldo = devTotal - percTotal;
+  const percBruto = pagos.reduce((s,p)=>s+p.monto, 0);
+  const totalDesc = descs.reduce((s,d)=>s+d.monto, 0);
+  const percNeto = percBruto - totalDesc;
+  const saldo = devTotal - percNeto;
 
   document.getElementById('liq-kpis').innerHTML = `
     <div class="kpi"><div class="kpi-label">Total devengado</div><div class="kpi-val amb">${fmtMonto(devTotal)}</div><div class="kpi-sub">Según horas dadas</div></div>
-    <div class="kpi"><div class="kpi-label">Total percibido</div><div class="kpi-val grn">${fmtMonto(percTotal)}</div><div class="kpi-sub">Pagos recibidos</div></div>
-    <div class="kpi"><div class="kpi-label">Saldo pendiente</div><div class="kpi-val ${saldo>0?'red':saldo<0?'grn':'amb'}">${fmtMonto(Math.abs(saldo))}</div><div class="kpi-sub">${saldo>0?'A cobrar':saldo<0?'A favor institución':'Al día'}</div></div>
+    <div class="kpi"><div class="kpi-label">Percibido bruto</div><div class="kpi-val grn">${fmtMonto(percBruto)}</div><div class="kpi-sub">Pagos recibidos</div></div>
+    <div class="kpi"><div class="kpi-label">Descuentos</div><div class="kpi-val red">− ${fmtMonto(totalDesc)}</div><div class="kpi-sub">${descs.length} retenciones</div></div>
+    <div class="kpi"><div class="kpi-label">Percibido neto</div><div class="kpi-val ${percNeto>=devTotal?'grn':'amb'}">${fmtMonto(percNeto)}</div><div class="kpi-sub">Saldo: ${saldo>0?'− '+fmtMonto(saldo)+' a cobrar':saldo<0?'+ '+fmtMonto(Math.abs(saldo))+' a favor':'Al día'}</div></div>
   `;
 
+  // Tabla pagos
   const tb = document.getElementById('pagos-tbody');
   const pp = [...pagos].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   tb.innerHTML = pp.length ? pp.map(p => {
@@ -2224,6 +2317,25 @@ function renderLiquidacion() {
     </tr>`;
   }).join('') : `<tr><td colspan="6" class="text-muted" style="text-align:center;padding:20px">Sin pagos registrados</td></tr>`;
 
+  // Tabla descuentos
+  const dtb = document.getElementById('desc-tbody');
+  const dd = [...descs].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  dtb.innerHTML = dd.length ? dd.map(d => {
+    const per = DB.periodos.find(x=>x.id===d.periodoId);
+    return `<tr>
+      <td>${fmtDate(d.fecha)}</td>
+      <td>${per?.nombre||'—'}</td>
+      <td>${d.concepto}</td>
+      <td style="color:var(--red);font-weight:600">− ${fmtMonto(d.monto)}</td>
+      <td class="text-muted">${d.notas||'—'}</td>
+      <td class="flex gap8">
+        <button class="btn-icon" onclick="openModalDescuento('${d.id}')">✎</button>
+        <button class="btn-icon" style="color:var(--red)" onclick="delDescuento('${d.id}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" class="text-muted" style="text-align:center;padding:20px">Sin descuentos registrados</td></tr>`;
+
+  // Detalle por materia
   document.getElementById('liq-detalle').innerHTML = rows.length ? `
     <div class="tbl-wrap"><table>
       <thead><tr><th>Materia</th><th>Período</th><th>Hs dadas</th><th>Tipos de hora</th><th>Devengado</th></tr></thead>
@@ -2237,7 +2349,16 @@ function renderLiquidacion() {
           <td class="text-muted" style="font-size:12px">${tiposStr}</td>
           <td style="color:var(--amb);font-weight:600">${fmtMonto(r.dev)}</td>
         </tr>`;
-      }).join('')}</tbody>
+      }).join('')}
+      <tr style="border-top:2px solid var(--brd2)">
+        <td colspan="4" style="font-weight:600;color:var(--muted)">Resumen</td>
+        <td></td>
+      </tr>
+      <tr><td colspan="4" class="text-muted text-sm">Devengado total</td><td style="color:var(--amb);font-weight:600">${fmtMonto(devTotal)}</td></tr>
+      <tr><td colspan="4" class="text-muted text-sm">Percibido bruto</td><td style="color:var(--grn);font-weight:600">${fmtMonto(percBruto)}</td></tr>
+      <tr><td colspan="4" class="text-muted text-sm">Descuentos / retenciones</td><td style="color:var(--red);font-weight:600">− ${fmtMonto(totalDesc)}</td></tr>
+      <tr style="border-top:1px solid var(--brd)"><td colspan="4" class="fw600">Percibido neto</td><td style="color:${percNeto>=devTotal?'var(--grn)':'var(--amb)'};font-weight:700;font-size:15px">${fmtMonto(percNeto)}</td></tr>
+      </tbody>
     </table></div>
   ` : '<div class="text-muted text-sm">Sin materias</div>';
 }
