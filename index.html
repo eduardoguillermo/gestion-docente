@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.02</div>
+  <div class="splash-version">v1.03</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.02</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.03</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -561,6 +561,11 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div id="periodos-list" class="mb16"></div>
     <button class="btn btn-secondary btn-sm" onclick="openModal('modal-periodo')">+ Nuevo período</button>
     <div class="divider"></div>
+    <div class="card-title">Biblioteca de módulos</div>
+    <div class="text-muted text-sm mb8">Módulos reutilizables para asignar a cualquier materia.</div>
+    <div id="bib-modulos-lista" class="mb8"></div>
+    <button class="btn btn-secondary btn-sm" onclick="openModalBibModulo()">+ Nuevo módulo</button>
+    <div class="divider"></div>
     <div class="card-title">Backup y restauración</div>
     <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--muted)">
       <div class="flex-center gap8 mb8">
@@ -601,6 +606,37 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-bkup')">Cerrar</button>
       <button class="btn btn-success" onclick="hacerBackup(true)">💾 Backup ahora</button>
+    </div>
+  </div>
+</div>
+
+<!-- Módulo de biblioteca -->
+<div class="modal-backdrop" id="modal-bib-modulo">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">Módulo de biblioteca
+      <button class="btn-icon" onclick="closeModal('modal-bib-modulo')">✕</button>
+    </div>
+    <input type="hidden" id="bib-mod-id">
+    <div class="form-group">
+      <label>Nombre del módulo</label>
+      <input id="bib-mod-nombre" placeholder="Ej: Anatomía I, Introducción a la disciplina...">
+    </div>
+    <div class="form-group">
+      <label>Tipo de hora por defecto</label>
+      <select id="bib-mod-tipo">
+        <option value="hora_medicina">Hora Medicina</option>
+        <option value="hora_licenciatura">Hora Licenciatura</option>
+        <option value="">Sin tipo por defecto</option>
+      </select>
+      <div class="text-muted text-sm" style="margin-top:4px">Se puede ajustar al asignarlo a una materia.</div>
+    </div>
+    <div class="form-group">
+      <label>Descripción (opcional)</label>
+      <textarea id="bib-mod-desc" placeholder="Contenidos, objetivos del módulo..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-bib-modulo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarBibModulo()">Guardar</button>
     </div>
   </div>
 </div>
@@ -709,18 +745,39 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <label>Módulos temáticos</label>
       <div style="background:var(--bg2);border:1px solid var(--brd2);border-radius:var(--radius);padding:12px;margin-top:4px">
         <div id="mat-modulos-lista" style="margin-bottom:10px"></div>
-        <div style="display:grid;grid-template-columns:1fr 160px auto;gap:8px;align-items:end">
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Nombre del módulo</div>
-            <input id="modulo-nombre-input" placeholder="Ej: Módulo 1 — Introducción" style="margin:0">
+
+        <!-- Desde biblioteca -->
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">Agregar desde biblioteca:</div>
+          <div style="display:grid;grid-template-columns:1fr 160px auto;gap:8px;align-items:end">
+            <div>
+              <select id="modulo-bib-input" style="margin:0">
+                <option value="">— elegir módulo —</option>
+              </select>
+            </div>
+            <div>
+              <select id="modulo-tipo-input" style="margin:0">
+                <option value="">— tipo de hora —</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="addModuloDesdeBiblioteca()" style="height:36px">+ Agregar</button>
           </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Tipo de hora</div>
-            <select id="modulo-tipo-input" style="margin:0">
-              <option value="">— elegir tipo —</option>
-            </select>
+        </div>
+
+        <!-- Nuevo manual -->
+        <div style="border-top:1px solid var(--brd);padding-top:10px;margin-top:4px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">O crear uno nuevo (se guarda también en biblioteca):</div>
+          <div style="display:grid;grid-template-columns:1fr 160px auto;gap:8px;align-items:end">
+            <div>
+              <input id="modulo-nombre-input" placeholder="Nombre del módulo" style="margin:0">
+            </div>
+            <div>
+              <select id="modulo-tipo-nuevo-input" style="margin:0">
+                <option value="">— tipo de hora —</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="addModuloNuevo()" style="height:36px">+ Crear</button>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="addModulo()" style="height:36px;margin-bottom:0">+ Agregar</button>
         </div>
         <div class="text-muted text-sm" style="margin-top:8px">Las clases se asocian a un módulo. El tipo de hora del módulo determina el devengado.</div>
       </div>
@@ -1105,7 +1162,8 @@ let DB = {
   pagos: [],
   feriados: [],
   actividades: [],
-  reintegros: []
+  reintegros: [],
+  bibliotecaModulos: []
 };
 
 const COLORES = ['#4f9ef8','#34d399','#fbbf24','#f87171','#a78bfa','#f472b6','#38bdf8','#fb923c','#a3e635','#2dd4bf'];
@@ -1451,6 +1509,7 @@ function openConfigModal() {
   document.getElementById('cfg-inst').value = DB.config.inst || '';
   document.getElementById('cfg-moneda').value = DB.config.moneda || 'UYU';
   renderPeriodosLista();
+  renderBibModulosLista();
   actualizarInfoBkup();
   openModal('modal-config');
 }
@@ -1612,13 +1671,84 @@ function addTipoHora() {
   renderTiposLista();
 }
 
-// ---- MÓDULOS ----
-function actualizarSelectModuloTipo() {
-  const sel = document.getElementById('modulo-tipo-input');
+// ---- BIBLIOTECA DE MÓDULOS ----
+function openModalBibModulo(id) {
+  document.getElementById('bib-mod-id').value = id || '';
+  if (id) {
+    const m = DB.bibliotecaModulos.find(x=>x.id===id);
+    document.getElementById('bib-mod-nombre').value = m.nombre;
+    document.getElementById('bib-mod-tipo').value = m.tipoDefecto || '';
+    document.getElementById('bib-mod-desc').value = m.desc || '';
+  } else {
+    document.getElementById('bib-mod-nombre').value = '';
+    document.getElementById('bib-mod-tipo').value = 'hora_medicina';
+    document.getElementById('bib-mod-desc').value = '';
+  }
+  openModal('modal-bib-modulo');
+}
+
+function guardarBibModulo() {
+  const id = document.getElementById('bib-mod-id').value || uid();
+  const nombre = document.getElementById('bib-mod-nombre').value.trim();
+  if (!nombre) { toast('Ingresá el nombre del módulo','err'); return; }
+  const obj = { id, nombre,
+    tipoDefecto: document.getElementById('bib-mod-tipo').value,
+    desc: document.getElementById('bib-mod-desc').value.trim()
+  };
+  const idx = DB.bibliotecaModulos.findIndex(m=>m.id===id);
+  if (idx>=0) DB.bibliotecaModulos[idx]=obj; else DB.bibliotecaModulos.push(obj);
+  save(); renderBibModulosLista(); populateSelectBiblioteca();
+  toast('Módulo guardado en biblioteca'); closeModal('modal-bib-modulo');
+  document.getElementById('bib-mod-id').value='';
+}
+
+function delBibModulo(id) {
+  if (!confirm('¿Eliminar este módulo de la biblioteca? No afecta materias existentes.')) return;
+  DB.bibliotecaModulos = DB.bibliotecaModulos.filter(m=>m.id!==id);
+  save(); renderBibModulosLista(); populateSelectBiblioteca();
+  toast('Módulo eliminado de biblioteca');
+}
+
+function renderBibModulosLista() {
+  const el = document.getElementById('bib-modulos-lista');
+  if (!el) return;
+  if (!DB.bibliotecaModulos.length) {
+    el.innerHTML = '<div class="text-muted text-sm" style="padding:4px 0 8px">Sin módulos en biblioteca.</div>';
+    return;
+  }
+  const TIPO_LABEL = { hora_medicina:'Hora Medicina', hora_licenciatura:'Hora Licenciatura', '':'Sin tipo' };
+  el.innerHTML = DB.bibliotecaModulos.map(m => `
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--brd)">
+      <div style="flex:1">
+        <div class="fw600 text-sm">${m.nombre}</div>
+        ${m.desc?`<div class="text-muted" style="font-size:11px">${m.desc}</div>`:''}
+      </div>
+      <span style="font-size:11px;background:var(--bg3);border:1px solid var(--brd2);border-radius:20px;padding:2px 8px;white-space:nowrap;color:var(--acc)">${TIPO_LABEL[m.tipoDefecto]||m.tipoDefecto||'Sin tipo'}</span>
+      <button class="btn-icon" onclick="openModalBibModulo('${m.id}')">✎</button>
+      <button class="btn-icon" style="color:var(--red)" onclick="delBibModulo('${m.id}')">✕</button>
+    </div>`).join('');
+}
+
+function populateSelectBiblioteca() {
+  const sel = document.getElementById('modulo-bib-input');
   if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">— elegir tipo —</option>' +
-    _tiposEditando.map(t=>`<option value="${t.id}" ${t.id===cur?'selected':''}>${t.nombre}${t.valor>0?' — '+fmtMonto(t.valor)+'/h':' ⚠ sin valor'}</option>`).join('');
+  sel.innerHTML = '<option value="">— elegir módulo de biblioteca —</option>' +
+    DB.bibliotecaModulos.map(m => {
+      const TIPO_LABEL = { hora_medicina:'Hora Medicina', hora_licenciatura:'Hora Licenciatura' };
+      return `<option value="${m.id}">${m.nombre}${TIPO_LABEL[m.tipoDefecto]?' ('+TIPO_LABEL[m.tipoDefecto]+')':''}</option>`;
+    }).join('');
+}
+
+// ---- MÓDULOS EN MATERIA ----
+function actualizarSelectModuloTipo() {
+  ['modulo-tipo-input','modulo-tipo-nuevo-input'].forEach(selId => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— tipo de hora —</option>' +
+      _tiposEditando.map(t=>`<option value="${t.id}" ${t.id===cur?'selected':''}>${t.nombre}${t.valor>0?' — '+fmtMonto(t.valor)+'/h':' ⚠ sin valor'}</option>`).join('');
+  });
+  populateSelectBiblioteca();
 }
 
 function renderModulosLista() {
@@ -1631,7 +1761,10 @@ function renderModulosLista() {
     const tipo = _tiposEditando.find(t=>t.id===m.tipoId);
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--brd)">
       <div style="font-size:11px;color:var(--muted);min-width:20px;font-weight:700">${i+1}</div>
-      <div style="flex:1;font-size:13px;font-weight:500">${m.nombre}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${m.nombre}</div>
+        ${m.desc?`<div style="font-size:11px;color:var(--muted)">${m.desc}</div>`:''}
+      </div>
       <span style="font-size:11px;background:var(--bg3);border:1px solid var(--brd2);border-radius:20px;padding:2px 8px;white-space:nowrap;color:${tipo?'var(--acc)':'var(--muted)'}">${tipo?tipo.nombre:'Sin tipo'}</span>
       <div style="font-size:12px;color:var(--amb);min-width:70px;text-align:right">${tipo&&tipo.valor>0?fmtMonto(tipo.valor)+'/h':'—'}</div>
       <button class="btn-icon" style="color:var(--red);flex-shrink:0" onclick="_modulosEditando.splice(${i},1);renderModulosLista()">✕</button>
@@ -1639,15 +1772,36 @@ function renderModulosLista() {
   }).join('');
 }
 
-function addModulo() {
-  const nombre = document.getElementById('modulo-nombre-input').value.trim();
+function addModuloDesdeBiblioteca() {
+  const bibId = document.getElementById('modulo-bib-input').value;
   const tipoId = document.getElementById('modulo-tipo-input').value;
-  if (!nombre) { toast('Ingresá el nombre del módulo','err'); return; }
-  _modulosEditando.push({ id: uid(), nombre, tipoId: tipoId||null });
-  document.getElementById('modulo-nombre-input').value = '';
+  if (!bibId) { toast('Elegí un módulo de la biblioteca','err'); return; }
+  const bibMod = DB.bibliotecaModulos.find(m=>m.id===bibId);
+  if (!bibMod) return;
+  if (_modulosEditando.find(m=>m.bibId===bibId)) { toast('Ese módulo ya está en la materia','err'); return; }
+  _modulosEditando.push({ id: uid(), bibId, nombre: bibMod.nombre, desc: bibMod.desc||'', tipoId: tipoId||null });
+  document.getElementById('modulo-bib-input').value = '';
+  document.getElementById('modulo-tipo-input').value = '';
   renderModulosLista();
 }
 
+function addModuloNuevo() {
+  const nombre = document.getElementById('modulo-nombre-input').value.trim();
+  const tipoId = document.getElementById('modulo-tipo-nuevo-input').value;
+  if (!nombre) { toast('Ingresá el nombre del módulo','err'); return; }
+  const tipo = _tiposEditando.find(t=>t.id===tipoId);
+  const tipoDefecto = tipo?.nombre==='Hora Medicina'?'hora_medicina':tipo?.nombre==='Hora Licenciatura'?'hora_licenciatura':'';
+  const newBibId = uid();
+  DB.bibliotecaModulos.push({ id: newBibId, nombre, tipoDefecto, desc: '' });
+  save();
+  _modulosEditando.push({ id: uid(), bibId: newBibId, nombre, desc: '', tipoId: tipoId||null });
+  document.getElementById('modulo-nombre-input').value = '';
+  document.getElementById('modulo-tipo-nuevo-input').value = '';
+  renderModulosLista(); populateSelectBiblioteca();
+  toast(`"${nombre}" creado y guardado en biblioteca`);
+}
+
+function addModulo() { addModuloDesdeBiblioteca(); }
 
 
 function renderHorarioLista() {
