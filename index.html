@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.09</div>
+  <div class="splash-version">v1.10</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.09</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.10</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -2646,6 +2646,7 @@ function renderDashboard() {
   `;
 
   // KPIs no remuneradas
+  const hoyD = hoy();
   const actsAll = filtro ? DB.actividades.filter(a=>a.periodoId===filtro) : DB.actividades;
   const hsNoRem = actsAll.reduce((s,a)=>s+a.horas,0);
   document.getElementById('k-norem').textContent = hsNoRem + ' hs';
@@ -2656,7 +2657,6 @@ function renderDashboard() {
 
   // Próximas clases
   const proxEl = document.getElementById('dash-proximas');
-  const hoyD = hoy();
   const en7 = new Date(); en7.setDate(en7.getDate()+7);
   const en7Str = en7.toISOString().slice(0,10);
   const prox = DB.clases.filter(c=>c.fecha>=hoyD&&c.fecha<=en7Str&&c.estado==='planificada').sort((a,b)=>a.fecha.localeCompare(b.fecha));
