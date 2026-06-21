@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.06</div>
+  <div class="splash-version">v1.07</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.06</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.07</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -2679,7 +2679,6 @@ function renderDashboard() {
     return `<div class="flex-center gap12 mb8" style="background:var(--bg2);border-radius:var(--radius);padding:10px 14px;border-left:3px solid ${m?.color||'var(--acc)'}">
       <div><div class="fw600 text-sm">${m?.nombre||'?'}</div><div class="text-muted text-sm">${fmtDate(c.fecha)}${c.inicio?' · '+c.inicio:''}${c.tema?' · '+c.tema:''}</div></div>
       <span class="ml-auto text-sm text-muted">${c.horas} hs</span>
-      <button class="btn btn-success btn-sm" onclick="marcarDada('${c.id}')">✓ Dada</button>
     </div>`;
   }).join('') : '<div class="text-muted text-sm">No hay clases planificadas en los próximos 7 días</div>';
 }
