@@ -341,7 +341,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.21</div>
+  <div class="splash-version">v1.22</div>
 </div>
 
 <div id="app" style="display:none">
@@ -357,7 +357,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.21</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.22</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -754,6 +754,30 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div style="display:none">
       <div id="periodos-list"></div>
     </div>
+    <div class="card-title">Ubicación de la institución</div>
+    <div class="text-muted text-sm mb8">El banner de asistencia aparece automáticamente cuando estés dentro del radio.</div>
+    <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px">
+      <div class="card-row col2" style="margin-bottom:10px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Latitud</div>
+          <input type="number" id="cfg-lat" placeholder="Ej: -34.9011" step="0.0001" style="margin:0">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Longitud</div>
+          <input type="number" id="cfg-lng" placeholder="Ej: -56.1645" step="0.0001" style="margin:0">
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Radio de detección (metros)</div>
+        <input type="number" id="cfg-radio" placeholder="200" min="50" max="1000" step="50" style="margin:0;width:140px">
+      </div>
+      <div class="flex gap8">
+        <button class="btn btn-primary btn-sm" onclick="detectarUbicacionActual()">📍 Usar mi ubicación actual</button>
+        <button class="btn btn-secondary btn-sm" onclick="testearGPS()">🧭 Testear ahora</button>
+      </div>
+      <div id="gps-status" class="text-muted text-sm" style="margin-top:8px"></div>
+    </div>
+    <div class="divider"></div>
     <div class="card-title">Biblioteca de módulos</div>
     <div class="text-muted text-sm mb8">Módulos reutilizables para asignar a cualquier materia.</div>
     <div id="bib-modulos-lista" class="mb8"></div>
@@ -1401,7 +1425,7 @@ document.addEventListener('DOMContentLoaded', iniciarSplash);
 // ESTADO GLOBAL
 // ============================================================
 let DB = {
-  config: { nombre: '', inst: '', moneda: 'UYU' },
+  config: { nombre: '', inst: '', moneda: 'UYU', geoLat: null, geoLng: null, geoRadio: 200 },
   periodos: [],
   materias: [],
   clases: [],
@@ -1544,42 +1568,99 @@ function delReintegro(id) {
 }
 
 // ============================================================
-// BANNER ASISTENCIA RÁPIDA
+// GEOLOCALIZACIÓN
 // ============================================================
+function distanciaMetros(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLng = (lng2-lng1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function detectarUbicacionActual() {
+  const st = document.getElementById('gps-status');
+  if (!navigator.geolocation) { st.textContent = '⚠ GPS no disponible en este dispositivo.'; return; }
+  st.textContent = '📡 Obteniendo ubicación...';
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = Math.round(pos.coords.latitude * 100000) / 100000;
+    const lng = Math.round(pos.coords.longitude * 100000) / 100000;
+    document.getElementById('cfg-lat').value = lat;
+    document.getElementById('cfg-lng').value = lng;
+    if (!document.getElementById('cfg-radio').value) document.getElementById('cfg-radio').value = 200;
+    st.textContent = `📍 Ubicación detectada: ${lat}, ${lng} (precisión ±${Math.round(pos.coords.accuracy)}m)`;
+    st.style.color = 'var(--grn)';
+  }, err => {
+    st.textContent = `⚠ Error GPS: ${err.message}`;
+    st.style.color = 'var(--red)';
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function testearGPS() {
+  const st = document.getElementById('gps-status');
+  const lat = parseFloat(document.getElementById('cfg-lat').value);
+  const lng = parseFloat(document.getElementById('cfg-lng').value);
+  const radio = parseFloat(document.getElementById('cfg-radio').value) || 200;
+  if (isNaN(lat)||isNaN(lng)) { st.textContent = '⚠ Primero configurá las coordenadas.'; st.style.color='var(--red)'; return; }
+  if (!navigator.geolocation) { st.textContent = '⚠ GPS no disponible.'; return; }
+  st.textContent = '📡 Detectando posición...';
+  navigator.geolocation.getCurrentPosition(pos => {
+    const dist = Math.round(distanciaMetros(pos.coords.latitude, pos.coords.longitude, lat, lng));
+    const dentro = dist <= radio;
+    st.textContent = `${dentro?'✅ Estás dentro':'❌ Estás fuera'} de la institución — Distancia: ${dist}m · Radio: ${radio}m`;
+    st.style.color = dentro ? 'var(--grn)' : 'var(--red)';
+  }, err => {
+    st.textContent = `⚠ Error: ${err.message}`;
+    st.style.color = 'var(--red)';
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function verificarGeoPosicion(callback) {
+  const cfg = DB.config;
+  // Si no hay coordenadas configuradas, siempre mostrar banner
+  if (!cfg.geoLat || !cfg.geoLng) { callback(true); return; }
+  if (!navigator.geolocation) { callback(true); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const dist = distanciaMetros(pos.coords.latitude, pos.coords.longitude, cfg.geoLat, cfg.geoLng);
+    callback(dist <= (cfg.geoRadio || 200));
+  }, () => {
+    // Si falla GPS, mostrar banner igual (mejor falso positivo que perder el registro)
+    callback(true);
+  }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+}
+
+
 const BANNER_ASIST_KEY = 'docente_banner_asist_descartado';
 
 function verificarBannerAsistencia() {
   const hoyStr = hoy();
   const descartado = localStorage.getItem(BANNER_ASIST_KEY);
-
-  // Si ya descartó hoy, no mostrar
   if (descartado === hoyStr) return;
 
   const registroHoy = DB.asistencias.filter(a => a.fecha === hoyStr);
-  const tieneEntrada = registroHoy.length > 0;
-  const tieneSalida = registroHoy.some(a => a.salida);
   const sinSalida = registroHoy.find(a => !a.salida || a.salida === '');
+  const todoCompleto = registroHoy.length > 0 && !sinSalida;
+  if (todoCompleto) return;
 
-  const banner = document.getElementById('banner-asist');
-  const txt = document.getElementById('banner-asist-txt');
-  const btn = document.getElementById('banner-asist-btn');
+  // Verificar GPS antes de mostrar
+  verificarGeoPosicion(dentroDeZona => {
+    if (!dentroDeZona) return; // No está en la institución, no mostrar
 
-  if (!tieneEntrada) {
-    // No hay registro hoy → ofrecer registrar llegada
-    txt.textContent = `¿Querés registrar tu llegada a la institución? (${formatHoraActual()})`;
-    btn.textContent = '✓ Registrar llegada';
+    const banner = document.getElementById('banner-asist');
+    const txt = document.getElementById('banner-asist-txt');
+    const btn = document.getElementById('banner-asist-btn');
+    if (!banner) return;
+
+    if (!registroHoy.length) {
+      txt.textContent = `¿Querés registrar tu llegada? (${formatHoraActual()})`;
+      btn.textContent = '✓ Registrar llegada';
+    } else if (sinSalida) {
+      txt.textContent = `Llegaste a las ${sinSalida.entrada}. ¿Registrás tu salida? (${formatHoraActual()})`;
+      btn.textContent = '✓ Registrar salida';
+      banner._asistId = sinSalida.id;
+    }
     banner.style.display = '';
-  } else if (sinSalida) {
-    // Hay entrada sin salida → ofrecer registrar salida
-    const entrada = sinSalida.entrada;
-    txt.textContent = `Llegaste a las ${entrada}. ¿Registrás tu salida ahora? (${formatHoraActual()})`;
-    btn.textContent = '✓ Registrar salida';
-    banner._asistId = sinSalida.id;
-    banner.style.display = '';
-  } else {
-    // Todo registrado
-    banner.style.display = 'none';
-  }
+  });
 }
 
 function formatHoraActual() {
@@ -2095,6 +2176,12 @@ function openConfigModal() {
   document.getElementById('cfg-nombre').value = DB.config.nombre || '';
   document.getElementById('cfg-inst').value = DB.config.inst || '';
   document.getElementById('cfg-moneda').value = DB.config.moneda || 'UYU';
+  document.getElementById('cfg-lat').value = DB.config.geoLat || '';
+  document.getElementById('cfg-lng').value = DB.config.geoLng || '';
+  document.getElementById('cfg-radio').value = DB.config.geoRadio || 200;
+  document.getElementById('gps-status').textContent = DB.config.geoLat
+    ? `✓ Ubicación configurada: ${DB.config.geoLat}, ${DB.config.geoLng} · Radio: ${DB.config.geoRadio}m`
+    : 'Sin ubicación configurada — el banner se mostrará siempre al abrir la app.';
   renderPeriodosLista();
   renderBibModulosLista();
   actualizarInfoBkup();
@@ -2104,6 +2191,12 @@ function guardarConfig() {
   DB.config.nombre = document.getElementById('cfg-nombre').value.trim();
   DB.config.inst = document.getElementById('cfg-inst').value.trim();
   DB.config.moneda = document.getElementById('cfg-moneda').value;
+  const lat = parseFloat(document.getElementById('cfg-lat').value);
+  const lng = parseFloat(document.getElementById('cfg-lng').value);
+  const radio = parseFloat(document.getElementById('cfg-radio').value) || 200;
+  DB.config.geoLat = isNaN(lat) ? null : lat;
+  DB.config.geoLng = isNaN(lng) ? null : lng;
+  DB.config.geoRadio = radio;
   save();
   actualizarHeader();
   toast('Configuración guardada');
