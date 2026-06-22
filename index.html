@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.17</div>
+  <div class="splash-version">v1.18</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.17</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.18</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -399,7 +399,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="card">
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>Fecha</th><th>Materia</th><th>Módulo</th><th>Horas</th><th>Tema</th><th>Tipo hora</th><th>Valor/h</th><th>Devengado</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Materia</th><th>Tema</th><th>Módulo</th><th>Horas</th><th>Tipo hora</th><th>Valor/h</th><th>Devengado</th><th>Estado</th><th></th></tr></thead>
             <tbody id="clases-tbody"></tbody>
           </table>
         </div>
@@ -2525,11 +2525,11 @@ function renderClases() {
     return `<tr>
       <td style="white-space:nowrap">${fmtDate(c.fecha)}</td>
       <td><span class="dot" style="background:${m?.color||'#999'}"></span> ${m?.nombre||'—'}</td>
+      <td class="text-muted" style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.tema||'—'}</td>
       <td>${c.moduloNombre
         ? `<span style="background:${modColor}22;color:${modColor};border:1px solid ${modColor}44;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap">${c.moduloNombre}</span>`
         : '<span class="text-muted" style="font-size:11px">—</span>'}</td>
       <td><b style="color:var(--acc)">${c.horas} hs</b></td>
-      <td class="text-muted" style="font-size:12px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.tema||'—'}</td>
       <td><span style="font-size:11px;color:var(--muted)">${c.tipoHoraNombre||'—'}</span></td>
       <td style="font-size:12px;color:var(--muted)">${c.valorHoraSnapshot?fmtMonto(c.valorHoraSnapshot)+'/h':'—'}</td>
       <td>${c.estado==='dada'&&c.valorHoraSnapshot?'<span style="color:var(--amb);font-weight:600">'+fmtMonto(c.horas*c.valorHoraSnapshot)+'</span>':'—'}</td>
