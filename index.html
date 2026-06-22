@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.19</div>
+  <div class="splash-version">v1.20</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.19</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.20</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -1252,6 +1252,7 @@ function entrarApp() {
     splash.style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     init();
+    verificarBannerAsistencia();
   }, 400);
 }
 
@@ -3908,7 +3909,6 @@ function init() {
   buildColorRow(COLORES[0]);
   renderDashboard();
   iniciarBackupAutomatico();
-  verificarBannerAsistencia();
 
   // Intercept config button
   document.querySelector('button[onclick*="modal-config"]').onclick = openConfigModal;
