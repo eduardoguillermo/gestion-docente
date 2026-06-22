@@ -248,7 +248,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.18</div>
+  <div class="splash-version">v1.19</div>
 </div>
 
 <div id="app" style="display:none">
@@ -264,7 +264,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.18</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.19</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -410,7 +410,15 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div class="tab" id="tab-horas">
       <div class="section-header mb16">
         <div class="section-title">Horas</div>
-        <select id="filtro-periodo-horas" style="display:none" onchange="renderHoras()"><option value="">Todos los períodos</option></select>
+        <div class="flex gap8">
+          <select id="filtro-periodo-horas" style="display:none" onchange="renderHoras()"><option value="">Todos los períodos</option></select>
+          <select id="filtro-materia-horas" style="width:auto" onchange="populateSelectModulosHoras();renderHoras()">
+            <option value="">Todas las materias</option>
+          </select>
+          <select id="filtro-modulo-horas" style="width:auto" onchange="renderHoras()">
+            <option value="">Todos los módulos</option>
+          </select>
+        </div>
       </div>
       <div id="horas-content"></div>
     </div>
@@ -2555,28 +2563,64 @@ function badgeEstado(e) {
 // ============================================================
 // HORAS
 // ============================================================
+function populateSelectModulosHoras() {
+  const matId = document.getElementById('filtro-materia-horas').value;
+  const sel = document.getElementById('filtro-modulo-horas');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos los módulos</option>';
+  const mats = matId ? DB.materias.filter(m=>m.id===matId) : DB.materias;
+  const modulos = [];
+  mats.forEach(m => (m.modulos||[]).forEach(mod => {
+    if (!modulos.find(x=>x.id===mod.id)) modulos.push(mod);
+  }));
+  modulos.forEach(mod => {
+    sel.innerHTML += `<option value="${mod.id}" ${mod.id===cur?'selected':''}>${mod.nombre}</option>`;
+  });
+}
+
 function renderHoras() {
-  const filtro = document.getElementById('filtro-periodo-horas').value;
+  // Poblar select materia
+  const matSel = document.getElementById('filtro-materia-horas');
+  const matCur = matSel.value;
+  matSel.innerHTML = '<option value="">Todas las materias</option>' +
+    DB.materias.map(m=>`<option value="${m.id}" ${m.id===matCur?'selected':''}>${m.nombre}</option>`).join('');
+
+  populateSelectModulosHoras();
+
+  const filtroMat = document.getElementById('filtro-materia-horas').value;
+  const filtroMod = document.getElementById('filtro-modulo-horas').value;
   const el = document.getElementById('horas-content');
-  const mats = filtro ? DB.materias.filter(m=>m.periodoId===filtro) : DB.materias;
+
+  let mats = DB.materias;
+  if (filtroMat) mats = mats.filter(m=>m.id===filtroMat);
   if (!mats.length) { el.innerHTML = '<div class="empty-state"><div>Sin materias</div></div>'; return; }
+
   el.innerHTML = mats.map(m => {
-    const per = DB.periodos.find(p=>p.id===m.periodoId);
-    const clases = DB.clases.filter(c=>c.materiaId===m.id);
+    // Filtrar clases por módulo si hay filtro
+    let clases = DB.clases.filter(c=>c.materiaId===m.id);
+    if (filtroMod) clases = clases.filter(c=>c.moduloId===filtroMod);
+
     const dadas = clases.filter(c=>c.estado==='dada').reduce((s,c)=>s+c.horas,0);
     const planif = clases.filter(c=>c.estado==='planificada').reduce((s,c)=>s+c.horas,0);
     const cancel = clases.filter(c=>c.estado==='cancelada'||c.estado==='feriado').reduce((s,c)=>s+c.horas,0);
     const restante = Math.max(0, m.horasPrev - dadas);
     const pct = m.horasPrev>0?Math.min(100,Math.round(dadas/m.horasPrev*100)):0;
-    const dev = devengadoMateria(m.id);
+    const dev = clases.filter(c=>c.estado==='dada').reduce((s,c)=>s+c.horas*(c.valorHoraSnapshot||0),0);
 
-    // Desglose por tipo de hora (solo clases dadas)
-    const tipos = m.tiposHora || [];
-    const desglose = tipos.map(t => {
-      const clasesT = clases.filter(c=>c.estado==='dada'&&c.tipoHoraId===t.id);
-      const hs = clasesT.reduce((s,c)=>s+c.horas,0);
-      const devT = hs * (c => c.valorHoraSnapshot||t.valor)(clasesT[0]||{valorHoraSnapshot:t.valor});
-      return hs>0?`<tr><td>${t.nombre}</td><td>${hs} hs</td><td>${fmtMonto(t.valor)}/h</td><td style="color:var(--amb);font-weight:600">${fmtMonto(hs*t.valor)}</td></tr>`:null;
+    // Desglose por módulo (solo clases dadas)
+    const modulos = m.modulos || [];
+    const desgloseModulos = modulos.map(mod => {
+      const clasesM = clases.filter(c=>c.estado==='dada'&&c.moduloId===mod.id);
+      const hs = clasesM.reduce((s,c)=>s+c.horas,0);
+      const devM = clasesM.reduce((s,c)=>s+c.horas*(c.valorHoraSnapshot||0),0);
+      if (!hs) return null;
+      const tipo = m.tiposHora?.find(t=>t.id===mod.tipoId);
+      return `<tr>
+        <td><span style="background:${m.color}22;color:${m.color};border:1px solid ${m.color}44;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600">${mod.nombre}</span></td>
+        <td>${hs} hs</td>
+        <td class="text-muted">${tipo?.nombre||'—'}</td>
+        <td style="color:var(--amb);font-weight:600">${fmtMonto(devM)}</td>
+      </tr>`;
     }).filter(Boolean);
 
     return `
@@ -2584,6 +2628,7 @@ function renderHoras() {
       <div class="flex-center gap8 mb16">
         <div class="dot" style="background:${m.color};width:12px;height:12px"></div>
         <span class="fw600">${m.nombre}</span>
+        ${filtroMod?`<span class="badge badge-acc" style="font-size:10px">${(m.modulos||[]).find(x=>x.id===filtroMod)?.nombre||''}</span>`:''}
       </div>
       <div class="card-row col4 mb16">
         <div class="kpi"><div class="kpi-label">Previstas</div><div class="kpi-val acc">${m.horasPrev}</div><div class="kpi-sub">hs totales</div></div>
@@ -2597,22 +2642,22 @@ function renderHoras() {
         <span class="text-muted">· Devengado: <b style="color:var(--amb)">${fmtMonto(dev)}</b></span>
       </div>
       <div class="progress"><div class="progress-bar ${pct>=100?'grn':pct>=60?'amb':'red'}" style="width:${pct}%"></div></div>
-      ${desglose.length?`
+      ${desgloseModulos.length?`
       <div class="divider"></div>
-      <div class="card-title">Desglose por tipo de hora (dadas)</div>
+      <div class="card-title">Desglose por módulo (clases dadas)</div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>Tipo</th><th>Horas</th><th>Valor/h</th><th>Devengado</th></tr></thead>
-        <tbody>${desglose.join('')}</tbody>
+        <thead><tr><th>Módulo</th><th>Horas</th><th>Tipo hora</th><th>Devengado</th></tr></thead>
+        <tbody>${desgloseModulos.join('')}</tbody>
       </table></div>`:''}
       <div class="divider"></div>
       <div class="tbl-wrap">
-        <table><thead><tr><th>Fecha</th><th>Tema</th><th>Tipo</th><th>Horas</th><th>Estado</th><th>Notas</th><th></th></tr></thead>
+        <table><thead><tr><th>Fecha</th><th>Módulo</th><th>Tema</th><th>Horas</th><th>Estado</th><th>Notas</th><th></th></tr></thead>
         <tbody>${clases.sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(c=>`
           <tr>
             <td>${fmtDate(c.fecha)}</td>
-            <td>${c.tema||'—'}</td>
-            <td><span class="badge badge-muted" style="font-size:10px">${c.tipoHoraNombre||'—'}</span></td>
-            <td>${c.horas} hs</td>
+            <td>${c.moduloNombre?`<span style="background:${m.color}22;color:${m.color};border:1px solid ${m.color}44;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600">${c.moduloNombre}</span>`:'<span class="text-muted">—</span>'}</td>
+            <td class="text-muted">${c.tema||'—'}</td>
+            <td><b style="color:var(--acc)">${c.horas} hs</b></td>
             <td>${badgeEstado(c.estado)}</td>
             <td class="text-muted">${c.notas||'—'}</td>
             <td><button class="btn-icon" onclick="openModalClase('${c.id}')">✎</button></td>
