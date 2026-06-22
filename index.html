@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1a2744">
 <title>Gestión Docente</title>
-<link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Gestión Docente&quot;,&quot;short_name&quot;:&quot;Docente&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#0f1b35&quot;,&quot;theme_color&quot;:&quot;#1a2744&quot;}">
+<link rel="manifest" href="data:application/json,{%22name%22:%22Gestión Docente%22,%22short_name%22:%22Docente%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f1b35%22,%22theme_color%22:%22%231a2744%22,%22shortcuts%22:[{%22name%22:%22Registrar salida%22,%22short_name%22:%22Salida%22,%22description%22:%22Registrar salida de la institución%22,%22url%22:%22/?accion=salida%22},{%22name%22:%22Registrar llegada%22,%22short_name%22:%22Llegada%22,%22description%22:%22Registrar llegada a la institución%22,%22url%22:%22/?accion=llegada%22}]}">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
@@ -341,7 +341,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.23</div>
+  <div class="splash-version">v1.24</div>
 </div>
 
 <div id="app" style="display:none">
@@ -357,7 +357,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.23</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.24</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -1399,7 +1399,16 @@ function entrarApp() {
     splash.style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     init();
-    verificarBannerAsistencia();
+    // Detectar acción por URL (?accion=salida o ?accion=llegada)
+    const params = new URLSearchParams(window.location.search);
+    const accion = params.get('accion');
+    if (accion === 'salida') {
+      ejecutarSalidaRapida();
+    } else if (accion === 'llegada') {
+      ejecutarLlegadaRapida();
+    } else {
+      verificarBannerAsistencia();
+    }
   }, 400);
 }
 
@@ -1567,9 +1576,43 @@ function delReintegro(id) {
   save(); renderReintegros(); toast('Gasto eliminado');
 }
 
-// ============================================================
-// GEOLOCALIZACIÓN
-// ============================================================
+function ejecutarSalidaRapida() {
+  const hoyStr = hoy();
+  const sinSalida = DB.asistencias.find(a => a.fecha===hoyStr && (!a.salida||a.salida===''));
+  if (sinSalida) {
+    const horaActual = formatHoraActual();
+    sinSalida.salida = horaActual;
+    const [h1,m1] = sinSalida.entrada.split(':').map(Number);
+    const [h2,m2] = horaActual.split(':').map(Number);
+    sinSalida.horas = Math.round(((h2*60+m2)-(h1*60+m1))/60*10)/10;
+    save();
+    toast(`🚪 Salida registrada: ${horaActual} · ${sinSalida.horas} hs`);
+    goTab('asistencia');
+  } else {
+    toast('Sin entrada pendiente para hoy','err');
+    verificarBannerAsistencia();
+  }
+  // Limpiar URL
+  history.replaceState({}, '', window.location.pathname);
+}
+
+function ejecutarLlegadaRapida() {
+  const hoyStr = hoy();
+  const yaHayEntrada = DB.asistencias.some(a => a.fecha===hoyStr);
+  if (!yaHayEntrada) {
+    const horaActual = formatHoraActual();
+    DB.asistencias.push({ id:uid(), fecha:hoyStr, entrada:horaActual, salida:'', horas:0, notas:'' });
+    save();
+    toast(`📍 Llegada registrada: ${horaActual}`);
+    goTab('asistencia');
+  } else {
+    toast('Ya hay una entrada registrada hoy','err');
+  }
+  history.replaceState({}, '', window.location.pathname);
+  verificarBannerAsistencia();
+}
+
+
 function distanciaMetros(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const dLat = (lat2-lat1) * Math.PI/180;
