@@ -361,7 +361,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.28</div>
+  <div class="splash-version">v1.29</div>
 </div>
 
 <div id="app" style="display:none">
@@ -377,7 +377,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.28</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.29</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -2983,7 +2983,8 @@ function guardarPago() {
   document.getElementById('pago-concepto').value='';
 }
 function renderLiquidacion() {
-  const filtro = document.getElementById('filtro-periodo-liq').value;
+  document.getElementById('filtro-periodo-liq').value = '';
+  const filtro = '';
   const mats = filtro ? DB.materias.filter(m=>m.periodoId===filtro) : DB.materias;
   const pagos = filtro ? DB.pagos.filter(p=>p.periodoId===filtro) : DB.pagos;
   const descs = filtro ? DB.descuentos.filter(d=>d.periodoId===filtro) : DB.descuentos;
@@ -3321,7 +3322,9 @@ function marcarDada(id) {
 // ============================================================
 function renderDashboard() {
   populateSelectPeriodos('dash-periodo');
-  const filtro = document.getElementById('dash-periodo').value;
+  // Período oculto — siempre mostrar todas las materias
+  document.getElementById('dash-periodo').value = '';
+  const filtro = '';
   const mats = filtro ? DB.materias.filter(m=>m.periodoId===filtro) : DB.materias;
 
   let prevTotal=0, dadasTotal=0, devTotal=0, percTotal=0;
