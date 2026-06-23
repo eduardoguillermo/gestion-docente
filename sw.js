@@ -1,15 +1,11 @@
-const CACHE_NAME = 'gestion-docente-v1.26';
+const CACHE_NAME = 'gestion-docente-v1.27';
 const URL_APP = '/gestion-docente/';
 
-// Al instalar — cachear la app
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.add(URL_APP))
-  );
+  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.add(URL_APP)));
   self.skipWaiting();
 });
 
-// Al activar — borrar cachés viejos
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -19,7 +15,7 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch — network first, caché como fallback
+// Network first — siempre intenta red, caché solo como fallback offline
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
@@ -33,4 +29,9 @@ self.addEventListener('fetch', e => {
       })
       .catch(() => caches.match(e.request))
   );
+});
+
+// Recibir mensaje para activar inmediatamente
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
