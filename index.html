@@ -361,7 +361,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.29</div>
+  <div class="splash-version">v1.30</div>
 </div>
 
 <div id="app" style="display:none">
@@ -377,7 +377,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.29</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.30</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -1474,7 +1474,6 @@ const COLORES = ['#4f9ef8','#34d399','#fbbf24','#f87171','#a78bfa','#f472b6','#3
 // ============================================================
 function openModalDescuento(id) {
   document.getElementById('desc-id').value = id || '';
-  populateSelectPeriodos('desc-periodo');
   if (id) {
     const d = DB.descuentos.find(x=>x.id===id);
     document.getElementById('desc-fecha').value = d.fecha;
@@ -2307,7 +2306,6 @@ function renderPeriodosLista() {
 function setPeriodoActivo(id) {
   DB.periodos.forEach(p => p.activo = (p.id === id));
   save(); actualizarHeader(); renderPeriodosLista();
-  populateSelectPeriodos();
 }
 function editPeriodo(id) {
   const p = DB.periodos.find(x=>x.id===id);
@@ -2323,7 +2321,7 @@ function editPeriodo(id) {
 function delPeriodo(id) {
   if (!confirm('¿Eliminar período?')) return;
   DB.periodos = DB.periodos.filter(p=>p.id!==id);
-  save(); renderPeriodosLista(); populateSelectPeriodos(); toast('Período eliminado');
+  save(); renderPeriodosLista(); toast('Período eliminado');
 }
 function guardarPeriodo() {
   const id = document.getElementById('per-id').value || uid();
@@ -2339,7 +2337,7 @@ function guardarPeriodo() {
   const idx = DB.periodos.findIndex(p=>p.id===id);
   if (idx>=0) DB.periodos[idx]=obj; else DB.periodos.push(obj);
   if (!DB.periodos.some(p=>p.activo)) { obj.activo = true; }
-  save(); populateSelectPeriodos(); renderPeriodosLista(); actualizarHeader();
+  save(); renderPeriodosLista(); actualizarHeader();
   toast('Período guardado'); closeModal('modal-periodo');
   document.getElementById('per-id').value='';
 }
@@ -2607,7 +2605,6 @@ function horarioToString(horarios) {
 
 function openModalMateria(id) {
   document.getElementById('mat-id').value = id || '';
-  populateSelectPeriodos('mat-periodo');
   if (id) {
     const m = DB.materias.find(x=>x.id===id);
     document.getElementById('mat-nombre').value = m.nombre;
@@ -2983,7 +2980,6 @@ function guardarPago() {
   document.getElementById('pago-concepto').value='';
 }
 function renderLiquidacion() {
-  document.getElementById('filtro-periodo-liq').value = '';
   const filtro = '';
   const mats = filtro ? DB.materias.filter(m=>m.periodoId===filtro) : DB.materias;
   const pagos = filtro ? DB.pagos.filter(p=>p.periodoId===filtro) : DB.pagos;
@@ -3068,7 +3064,6 @@ function renderLiquidacion() {
 function editPago(id) {
   const p = DB.pagos.find(x=>x.id===id);
   if (!p) return;
-  populateSelectPeriodos('pago-periodo');
   document.getElementById('pago-id').value = p.id;
   document.getElementById('pago-fecha').value = p.fecha;
   document.getElementById('pago-periodo').value = p.periodoId||'';
@@ -3321,9 +3316,6 @@ function marcarDada(id) {
 // DASHBOARD
 // ============================================================
 function renderDashboard() {
-  populateSelectPeriodos('dash-periodo');
-  // Período oculto — siempre mostrar todas las materias
-  document.getElementById('dash-periodo').value = '';
   const filtro = '';
   const mats = filtro ? DB.materias.filter(m=>m.periodoId===filtro) : DB.materias;
 
@@ -3683,8 +3675,7 @@ const TIPOS_ACT = {
 
 function openModalActividad(id) {
   document.getElementById('act-id').value = id || '';
-  populateSelectPeriodos('act-periodo');
-  if (id) {
+    if (id) {
     const a = DB.actividades.find(x=>x.id===id);
     document.getElementById('act-fecha').value = a.fecha;
     document.getElementById('act-tipo').value = a.tipo;
@@ -3750,7 +3741,6 @@ function delActividad(id) {
 }
 
 function renderActividades() {
-  populateSelectPeriodos('filtro-periodo-act');
   const filtroPer = document.getElementById('filtro-periodo-act').value;
   const filtroTipo = document.getElementById('filtro-tipo-act').value;
   let acts = [...DB.actividades].sort((a,b)=>b.fecha.localeCompare(a.fecha));
@@ -4226,7 +4216,6 @@ document.addEventListener('click', e => {
 function init() {
   load();
   actualizarHeader();
-  populateSelectPeriodos();
   populateSelectMaterias();
   initFerAnios();
   initRepAnios();
@@ -4243,8 +4232,7 @@ function init() {
   document.querySelector('button[onclick*="modal-clase"]').onclick = () => openModalClase();
   // Intercept pago button
   document.querySelector('button[onclick*="modal-pago"]').onclick = () => {
-    populateSelectPeriodos('pago-periodo');
-    document.getElementById('pago-fecha').value = hoy();
+document.getElementById('pago-fecha').value = hoy();
     document.getElementById('pago-id').value = '';
     openModal('modal-pago');
   };
