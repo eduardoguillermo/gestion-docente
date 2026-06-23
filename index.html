@@ -361,7 +361,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.32</div>
+  <div class="splash-version">v1.33</div>
 </div>
 
 <div id="app" style="display:none">
@@ -377,7 +377,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.32</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.33</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -823,6 +823,58 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <button class="btn btn-secondary btn-sm ml-auto" onclick="openModal('modal-bkup')">📋 Ver historial</button>
       </div>
     </div>
+
+    <!-- Destino de backup -->
+    <div class="card-title" style="margin-bottom:8px">Destino del backup automático</div>
+    <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--radius);padding:14px;margin-bottom:12px">
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Tipo de destino</label>
+        <select id="cfg-bkup-destino" onchange="onChangeBkupDestino()" style="margin-top:4px">
+          <option value="local">Solo localStorage (interno)</option>
+          <option value="descarga">Descarga automática de archivo</option>
+          <option value="gdrive">Google Drive</option>
+          <option value="onedrive">OneDrive</option>
+          <option value="carpeta">Carpeta local (Chrome/Edge desktop)</option>
+        </select>
+      </div>
+
+      <!-- Descarga automática -->
+      <div id="bkup-dest-descarga" style="display:none">
+        <div class="text-muted text-sm">El archivo se descarga automáticamente al hacer backup. Nombre con timestamp: <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">docente_bkup_AAAAMMDD_HHMM.json</code></div>
+      </div>
+
+      <!-- Google Drive -->
+      <div id="bkup-dest-gdrive" style="display:none">
+        <div class="form-group mb8">
+          <label>Client ID de Google</label>
+          <input id="cfg-gdrive-client-id" placeholder="xxxxxx.apps.googleusercontent.com" style="margin-top:4px">
+        </div>
+        <div class="text-muted text-sm mb8">Creá un proyecto en <a href="https://console.cloud.google.com" target="_blank" rel="noopener" style="color:var(--acc)">Google Cloud Console</a>, habilitá la Drive API y creá credenciales OAuth 2.0. Usá <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">https://eduardoguillermo.github.io/gestion-docente/</code> como origen autorizado.</div>
+        <button class="btn btn-secondary btn-sm" onclick="conectarGDrive()">🔗 Conectar con Google Drive</button>
+        <span id="gdrive-status" class="text-muted text-sm" style="margin-left:8px"></span>
+      </div>
+
+      <!-- OneDrive -->
+      <div id="bkup-dest-onedrive" style="display:none">
+        <div class="form-group mb8">
+          <label>Client ID de Microsoft (Azure)</label>
+          <input id="cfg-onedrive-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="margin-top:4px">
+        </div>
+        <div class="text-muted text-sm mb8">Registrá la app en <a href="https://portal.azure.com" target="_blank" rel="noopener" style="color:var(--acc)">Azure Portal</a> → App registrations. Agregá <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">https://eduardoguillermo.github.io/gestion-docente/</code> como redirect URI.</div>
+        <button class="btn btn-secondary btn-sm" onclick="conectarOneDrive()">🔗 Conectar con OneDrive</button>
+        <span id="onedrive-status" class="text-muted text-sm" style="margin-left:8px"></span>
+      </div>
+
+      <!-- Carpeta local -->
+      <div id="bkup-dest-carpeta" style="display:none">
+        <div class="flex-center gap8 mb8">
+          <span class="text-muted text-sm" id="cfg-carpeta-nombre">Sin carpeta seleccionada</span>
+          <button class="btn btn-secondary btn-sm ml-auto" onclick="seleccionarCarpetaLocal()">📁 Elegir carpeta</button>
+        </div>
+        <div class="text-muted text-sm">Solo disponible en Chrome y Edge desktop. La carpeta se recuerda mientras la app esté abierta.</div>
+      </div>
+    </div>
+
     <div class="flex gap8 mb8">
       <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇ Exportar JSON</button>
       <label class="btn btn-secondary btn-sm" style="cursor:pointer">⬆ Importar JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(event)"></label>
@@ -2030,6 +2082,165 @@ function renderReintegros() {
 }
 
 
+// ============================================================
+// DESTINOS DE BACKUP
+// ============================================================
+const BKUP_CFG_KEY = 'docente_bkup_cfg';
+let _carpetaHandle = null;
+let _gdriveToken = null;
+let _onedriveToken = null;
+
+function getBkupCfg() {
+  try { return JSON.parse(localStorage.getItem(BKUP_CFG_KEY)) || { destino: 'local' }; }
+  catch(e) { return { destino: 'local' }; }
+}
+function saveBkupCfg(cfg) { localStorage.setItem(BKUP_CFG_KEY, JSON.stringify(cfg)); }
+
+function onChangeBkupDestino() {
+  const val = document.getElementById('cfg-bkup-destino').value;
+  ['descarga','gdrive','onedrive','carpeta'].forEach(d => {
+    document.getElementById('bkup-dest-'+d).style.display = val===d ? '' : 'none';
+  });
+  const cfg = getBkupCfg(); cfg.destino = val; saveBkupCfg(cfg);
+}
+
+function cargarConfigBkupUI() {
+  const cfg = getBkupCfg();
+  const sel = document.getElementById('cfg-bkup-destino');
+  if (sel) { sel.value = cfg.destino || 'local'; onChangeBkupDestino(); }
+  if (cfg.gdriveClientId) document.getElementById('cfg-gdrive-client-id').value = cfg.gdriveClientId;
+  if (cfg.onedriveClientId) document.getElementById('cfg-onedrive-client-id').value = cfg.onedriveClientId;
+  if (cfg.carpetaNombre) document.getElementById('cfg-carpeta-nombre').textContent = '📁 ' + cfg.carpetaNombre;
+  if (_gdriveToken) document.getElementById('gdrive-status').textContent = '✓ Conectado';
+  if (_onedriveToken) document.getElementById('onedrive-status').textContent = '✓ Conectado';
+}
+
+function bkupTimestamp() {
+  const d = new Date();
+  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
+function descargarBkupArchivo(data) {
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `docente_bkup_${bkupTimestamp()}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function seleccionarCarpetaLocal() {
+  if (!('showDirectoryPicker' in window)) { toast('Tu navegador no soporta esta función. Usá Chrome o Edge desktop.','err'); return; }
+  try {
+    _carpetaHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const cfg = getBkupCfg(); cfg.carpetaNombre = _carpetaHandle.name; saveBkupCfg(cfg);
+    document.getElementById('cfg-carpeta-nombre').textContent = '📁 ' + _carpetaHandle.name;
+    toast('Carpeta seleccionada: ' + _carpetaHandle.name);
+  } catch(e) { if (e.name !== 'AbortError') toast('Error al seleccionar carpeta','err'); }
+}
+
+async function guardarEnCarpetaLocal(data) {
+  if (!_carpetaHandle) { toast('Seleccioná una carpeta primero en ⚙ Configurar','err'); return; }
+  try {
+    const nombre = `docente_bkup_${bkupTimestamp()}.json`;
+    const fh = await _carpetaHandle.getFileHandle(nombre, { create: true });
+    const writable = await fh.createWritable();
+    await writable.write(data); await writable.close();
+    toast(`💾 Backup guardado: ${nombre}`);
+  } catch(e) { toast('Error carpeta: ' + e.message,'err'); descargarBkupArchivo(data); }
+}
+
+function conectarGDrive() {
+  const clientId = document.getElementById('cfg-gdrive-client-id').value.trim();
+  if (!clientId) { toast('Ingresá el Client ID de Google','err'); return; }
+  const cfg = getBkupCfg(); cfg.gdriveClientId = clientId; saveBkupCfg(cfg);
+  const scope = 'https://www.googleapis.com/auth/drive.file';
+  const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirect}&response_type=token&scope=${scope}`;
+  const popup = window.open(url, 'gdrive_auth', 'width=500,height=600');
+  window._gdriveCheck = setInterval(() => {
+    try {
+      if (popup.location.href.includes('access_token')) {
+        _gdriveToken = new URLSearchParams(popup.location.hash.slice(1)).get('access_token');
+        popup.close(); clearInterval(window._gdriveCheck);
+        document.getElementById('gdrive-status').textContent = '✓ Conectado';
+        toast('Google Drive conectado ✓');
+      }
+    } catch(e) {}
+    if (popup.closed) clearInterval(window._gdriveCheck);
+  }, 500);
+}
+
+async function subirAGDrive(data) {
+  if (!_gdriveToken) { toast('Conectá Google Drive primero','err'); return; }
+  const nombre = `docente_bkup_${bkupTimestamp()}.json`;
+  const meta = JSON.stringify({ name: nombre, mimeType: 'application/json' });
+  const form = new FormData();
+  form.append('metadata', new Blob([meta], { type: 'application/json' }));
+  form.append('file', new Blob([data], { type: 'application/json' }));
+  try {
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + _gdriveToken }, body: form
+    });
+    if (res.ok) toast(`☁ Backup en Google Drive: ${nombre}`);
+    else throw new Error(await res.text());
+  } catch(e) { toast('Error Drive: ' + e.message,'err'); descargarBkupArchivo(data); }
+}
+
+function conectarOneDrive() {
+  const clientId = document.getElementById('cfg-onedrive-client-id').value.trim();
+  if (!clientId) { toast('Ingresá el Client ID de Microsoft','err'); return; }
+  const cfg = getBkupCfg(); cfg.onedriveClientId = clientId; saveBkupCfg(cfg);
+  const scope = encodeURIComponent('files.readwrite offline_access');
+  const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
+  const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&redirect_uri=${redirect}&response_type=token&scope=${scope}`;
+  const popup = window.open(url, 'onedrive_auth', 'width=500,height=600');
+  window._onedriveCheck = setInterval(() => {
+    try {
+      if (popup.location.href.includes('access_token')) {
+        _onedriveToken = new URLSearchParams(popup.location.hash.slice(1)).get('access_token');
+        popup.close(); clearInterval(window._onedriveCheck);
+        document.getElementById('onedrive-status').textContent = '✓ Conectado';
+        toast('OneDrive conectado ✓');
+      }
+    } catch(e) {}
+    if (popup.closed) clearInterval(window._onedriveCheck);
+  }, 500);
+}
+
+async function subirAOneDrive(data) {
+  if (!_onedriveToken) { toast('Conectá OneDrive primero','err'); return; }
+  const nombre = `docente_bkup_${bkupTimestamp()}.json`;
+  try {
+    const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/BackupsDocente/${nombre}:/content`, {
+      method: 'PUT', headers: { 'Authorization': 'Bearer ' + _onedriveToken, 'Content-Type': 'application/json' }, body: data
+    });
+    if (res.ok) toast(`☁ Backup en OneDrive: ${nombre}`);
+    else throw new Error(await res.text());
+  } catch(e) { toast('Error OneDrive: ' + e.message,'err'); descargarBkupArchivo(data); }
+}
+
+async function enviarBkupExterno(data) {
+  const cfg = getBkupCfg();
+  switch(cfg.destino) {
+    case 'descarga': descargarBkupArchivo(data); break;
+    case 'gdrive':   await subirAGDrive(data); break;
+    case 'onedrive': await subirAOneDrive(data); break;
+    case 'carpeta':  await guardarEnCarpetaLocal(data); break;
+  }
+}
+
+function iniciarBackupAlCerrar() {
+  window.addEventListener('beforeunload', () => {
+    hacerBackup(false);
+    const cfg = getBkupCfg();
+    if (cfg.destino === 'descarga') descargarBkupArchivo(JSON.stringify(DB, null, 2));
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') hacerBackup(false);
+  });
+}
+
 const BKUP_KEY = 'docente_backups';
 const BKUP_MAX = 10;
 const BKUP_INTERVALO_MS = 2 * 60 * 60 * 1000; // 2 horas
@@ -2066,7 +2277,11 @@ function hacerBackup(manual=false) {
   }
   guardarBackups(bkups);
   actualizarInfoBkup();
-  if (manual) { toast('✓ Backup guardado'); renderBkupLista(); }
+  if (manual) {
+    toast('✓ Backup guardado');
+    renderBkupLista();
+    enviarBkupExterno(snapshot.data);
+  }
 }
 
 function restaurarBackup(ts) {
@@ -2238,6 +2453,7 @@ function openConfigModal() {
   renderPeriodosLista();
   renderBibModulosLista();
   actualizarInfoBkup();
+  cargarConfigBkupUI();
   openModal('modal-config');
 }
 function guardarConfig() {
@@ -4217,6 +4433,7 @@ function init() {
   buildColorRow(COLORES[0]);
   renderDashboard();
   iniciarBackupAutomatico();
+  iniciarBackupAlCerrar();
 
   // Intercept config button
   document.querySelector('button[onclick*="modal-config"]').onclick = openConfigModal;
