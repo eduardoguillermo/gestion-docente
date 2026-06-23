@@ -5,7 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1a2744">
 <title>Gestión Docente</title>
-<link rel="manifest" href="data:application/json,{%22name%22:%22Gestión Docente%22,%22short_name%22:%22Docente%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f1b35%22,%22theme_color%22:%22%231a2744%22,%22shortcuts%22:[{%22name%22:%22Registrar salida%22,%22short_name%22:%22Salida%22,%22description%22:%22Registrar salida de la institución%22,%22url%22:%22/?accion=salida%22},{%22name%22:%22Registrar llegada%22,%22short_name%22:%22Llegada%22,%22description%22:%22Registrar llegada a la institución%22,%22url%22:%22/?accion=llegada%22}]}">
+<link rel="manifest" href="manifest.json">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/gestion-docente/sw.js')
+      .then(reg => {
+        // Forzar actualización si hay nueva versión
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              // Nueva versión disponible — recargar automáticamente
+              newSW.postMessage({ type: 'SKIP_WAITING' });
+              navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+            }
+          });
+        });
+      });
+  });
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
@@ -351,7 +371,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.26</div>
+  <div class="splash-version">v1.27</div>
 </div>
 
 <div id="app" style="display:none">
@@ -367,7 +387,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.26</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.27</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
