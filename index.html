@@ -361,7 +361,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.33</div>
+  <div class="splash-version">v1.34</div>
 </div>
 
 <div id="app" style="display:none">
@@ -377,7 +377,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.33</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.34</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -2937,21 +2937,29 @@ function guardarClase() {
   // Validación: módulo obligatorio
   if (!moduloId) { toast('Seleccioná un módulo para la clase','err'); return; }
 
-  // Validación: solapamiento de horarios (mismo día, misma materia)
+  // Validación: solapamiento de horarios (clases y actividades del mismo día)
   if (inicio && fin) {
     const ini1 = inicio.replace(':','');
     const fin1 = fin.replace(':','');
+    const solapa = (ini2, fin2) => ini2 && fin2 && ini1 < fin2.replace(':','') && fin1 > ini2.replace(':','');
+
     const solapada = DB.clases.find(c => {
-      if (c.id === id) return false; // ignorar la misma clase en edición
+      if (c.id === id) return false;
       if (c.fecha !== fecha) return false;
-      if (!c.inicio || !c.fin) return false;
-      const ini2 = c.inicio.replace(':','');
-      const fin2 = c.fin.replace(':','');
-      return ini1 < fin2 && fin1 > ini2; // solapamiento
+      return solapa(c.inicio, c.fin);
     });
     if (solapada) {
       const mSol = DB.materias.find(x=>x.id===solapada.materiaId);
-      toast(`Conflicto de horario con "${mSol?.nombre||'otra clase'}" (${solapada.inicio}–${solapada.fin})`,'err');
+      toast(`Conflicto con clase "${mSol?.nombre||'otra clase'}" (${solapada.inicio}–${solapada.fin})`,'err');
+      return;
+    }
+
+    const solapadaAct = DB.actividades.find(a => {
+      if (a.fecha !== fecha) return false;
+      return solapa(a.inicio, a.fin);
+    });
+    if (solapadaAct) {
+      toast(`Conflicto con actividad "${solapadaAct.desc}" (${solapadaAct.inicio}–${solapadaAct.fin})`,'err');
       return;
     }
   }
@@ -3923,19 +3931,40 @@ function openModalActividad(id) {
 
 function guardarActividad() {
   const id = document.getElementById('act-id').value || uid();
+  const fecha = document.getElementById('act-fecha').value;
+  const inicio = document.getElementById('act-inicio').value;
+  const fin = document.getElementById('act-fin').value;
+
+  if (!fecha) { toast('Ingresá la fecha','err'); return; }
+  if (!document.getElementById('act-desc').value.trim()) { toast('Ingresá una descripción','err'); return; }
+
+  // Validación: solapamiento con clases y otras actividades
+  if (inicio && fin) {
+    const solapa = (i2, f2) => i2 && f2 && inicio.replace(':','') < f2.replace(':','') && fin.replace(':','') > i2.replace(':','');
+
+    const solapadaCl = DB.clases.find(c => c.fecha===fecha && c.id!==id && solapa(c.inicio, c.fin));
+    if (solapadaCl) {
+      const m = DB.materias.find(x=>x.id===solapadaCl.materiaId);
+      toast(`Conflicto con clase "${m?.nombre||'clase'}" (${solapadaCl.inicio}–${solapadaCl.fin})`,'err');
+      return;
+    }
+
+    const solapadaAct = DB.actividades.find(a => a.fecha===fecha && a.id!==id && solapa(a.inicio, a.fin));
+    if (solapadaAct) {
+      toast(`Conflicto con actividad "${solapadaAct.desc}" (${solapadaAct.inicio}–${solapadaAct.fin})`,'err');
+      return;
+    }
+  }
+
   const obj = {
-    id,
-    fecha: document.getElementById('act-fecha').value,
+    id, fecha,
     tipo: document.getElementById('act-tipo').value,
     desc: document.getElementById('act-desc').value.trim(),
-    inicio: document.getElementById('act-inicio').value,
-    fin: document.getElementById('act-fin').value,
+    inicio, fin,
     horas: parseFloat(document.getElementById('act-horas').value)||0,
     periodoId: document.getElementById('act-periodo').value,
     notas: document.getElementById('act-notas').value.trim()
   };
-  if (!obj.fecha) { toast('Ingresá la fecha','err'); return; }
-  if (!obj.desc) { toast('Ingresá una descripción','err'); return; }
   const idx = DB.actividades.findIndex(a=>a.id===id);
   if (idx>=0) DB.actividades[idx]=obj; else DB.actividades.push(obj);
   save(); renderActividades(); toast('Actividad guardada'); closeModal('modal-actividad');
