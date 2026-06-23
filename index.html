@@ -361,7 +361,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.30</div>
+  <div class="splash-version">v1.31</div>
 </div>
 
 <div id="app" style="display:none">
@@ -377,7 +377,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.30</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.31</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -471,6 +471,12 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
       <div class="card mb16">
         <div class="chip-wrap" id="cal-filtro-materias"></div>
+        <div class="chip-wrap" style="margin-top:8px" id="cal-filtro-tipo">
+          <span class="chip active" data-tipo="todos" onclick="calFiltroTipoSet('todos')">Todo</span>
+          <span class="chip" data-tipo="clases" onclick="calFiltroTipoSet('clases')">Solo clases</span>
+          <span class="chip" data-tipo="actividades" onclick="calFiltroTipoSet('actividades')">Solo actividades</span>
+        </div>
+        <div class="chip-wrap" style="margin-top:8px" id="cal-filtro-modulos"></div>
       </div>
 
       <div class="card">
@@ -921,35 +927,6 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="form-group"><label>Horas previstas totales</label><input type="number" id="mat-horas-prev" min="0" step="0.5" placeholder="60"></div>
     </div>
 
-    <div class="form-group">
-      <label>Horario semanal</label>
-      <div style="background:var(--bg2);border:1px solid var(--brd2);border-radius:var(--radius);padding:12px;margin-top:4px">
-        <div id="mat-horario-lista" style="margin-bottom:10px"></div>
-        <div style="display:grid;grid-template-columns:1fr 110px 110px auto;gap:8px;align-items:end">
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Día</div>
-            <select id="mat-dia-input" style="margin:0">
-              <option value="1">Lunes</option>
-              <option value="2">Martes</option>
-              <option value="3">Miércoles</option>
-              <option value="4">Jueves</option>
-              <option value="5">Viernes</option>
-              <option value="6">Sábado</option>
-              <option value="0">Domingo</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Inicio</div>
-            <input type="time" id="mat-hora-inicio-input" value="08:00" style="margin:0">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Fin</div>
-            <input type="time" id="mat-hora-fin-input" value="10:00" style="margin:0">
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="addHorarioDia()" style="height:36px;margin-bottom:0">+ Agregar</button>
-        </div>
-      </div>
-    </div>
 
     <div class="form-group">
       <label>Tipos de hora y valores</label>
@@ -1067,6 +1044,9 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       </div>
     </div>
     <div class="form-group"><label>Tema / contenido</label><input id="cl-tema" placeholder="Ej: Derivadas parciales"></div>
+    <div class="form-group"><label>Link de recurso (Google Drive u otro)</label>
+      <input id="cl-link" type="url" placeholder="https://drive.google.com/...">
+    </div>
     <div class="form-group"><label>Estado</label>
       <select id="cl-estado">
         <option value="planificada">Planificada</option>
@@ -2359,7 +2339,6 @@ function getSelectedColor() {
 }
 
 let _tiposEditando = [];
-let _horariosEditando = [];
 let _modulosEditando = [];
 
 const TIPOS_HORA_PREDEFINIDOS = [
@@ -2555,70 +2534,19 @@ function addModuloNuevo() {
 
 function addModulo() { addModuloDesdeBiblioteca(); }
 
-
-function renderHorarioLista() {
-  const el = document.getElementById('mat-horario-lista');
-  if (!_horariosEditando.length) {
-    el.innerHTML = '<div class="text-muted text-sm" style="padding:4px 0 8px">Sin días asignados.</div>';
-    return;
-  }
-  // Ordenar por día de la semana
-  const sorted = [..._horariosEditando].sort((a,b)=>a.dia-b.dia);
-  el.innerHTML = sorted.map((h,i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--brd)">
-      <div style="font-size:13px;font-weight:600;min-width:80px">${DIAS_SEMANA[h.dia]}</div>
-      <div style="font-size:13px;color:var(--acc)">${h.inicio} – ${h.fin}</div>
-      <div style="font-size:12px;color:var(--muted);margin-left:4px">(${calcHorasDiff(h.inicio,h.fin)} hs)</div>
-      <button class="btn-icon" style="color:var(--red);margin-left:auto" onclick="delHorarioDia(${_horariosEditando.indexOf(_horariosEditando.find(x=>x.dia===h.dia&&x.inicio===h.inicio))})">✕</button>
-    </div>`).join('');
-}
-
-function calcHorasDiff(ini, fin) {
-  const [h1,m1] = ini.split(':').map(Number);
-  const [h2,m2] = fin.split(':').map(Number);
-  const diff = ((h2*60+m2)-(h1*60+m1))/60;
-  return diff>0 ? Math.round(diff*10)/10 : 0;
-}
-
-function addHorarioDia() {
-  const dia = parseInt(document.getElementById('mat-dia-input').value);
-  const inicio = document.getElementById('mat-hora-inicio-input').value;
-  const fin = document.getElementById('mat-hora-fin-input').value;
-  if (!inicio || !fin) { toast('Ingresá hora de inicio y fin','err'); return; }
-  if (calcHorasDiff(inicio,fin) <= 0) { toast('La hora de fin debe ser posterior al inicio','err'); return; }
-  // Permitir duplicar el mismo día con distinto horario (ej: 2 bloques el mismo día)
-  _horariosEditando.push({ dia, inicio, fin });
-  renderHorarioLista();
-}
-
-function delHorarioDia(idx) {
-  _horariosEditando.splice(idx, 1);
-  renderHorarioLista();
-}
-
-function horarioToString(horarios) {
-  if (!horarios || !horarios.length) return '';
-  return [...horarios].sort((a,b)=>a.dia-b.dia)
-    .map(h=>`${DIAS_SEMANA[h.dia]} ${h.inicio}–${h.fin}`)
-    .join(', ');
-}
-
 function openModalMateria(id) {
   document.getElementById('mat-id').value = id || '';
   if (id) {
     const m = DB.materias.find(x=>x.id===id);
     document.getElementById('mat-nombre').value = m.nombre;
-    document.getElementById('mat-periodo').value = m.periodoId || '';
     document.getElementById('mat-horas-prev').value = m.horasPrev || '';
     document.getElementById('mat-notas').value = m.notas || '';
     _tiposEditando = JSON.parse(JSON.stringify(m.tiposHora || []));
-    _horariosEditando = JSON.parse(JSON.stringify(m.horarios || []));
     _modulosEditando = JSON.parse(JSON.stringify(m.modulos || []));
     buildColorRow(m.color || COLORES[0]);
   } else {
     ['mat-nombre','mat-horas-prev','mat-notas'].forEach(i=>document.getElementById(i).value='');
     _tiposEditando = [];
-    _horariosEditando = [];
     _modulosEditando = [];
     buildColorRow(COLORES[0]);
   }
@@ -2626,7 +2554,6 @@ function openModalMateria(id) {
   document.getElementById('tipo-valor-input').value = '';
   document.getElementById('modulo-nombre-input').value = '';
   renderTiposLista();
-  renderHorarioLista();
   renderModulosLista();
   openModal('modal-materia');
 }
@@ -2641,8 +2568,6 @@ function guardarMateria() {
     periodoId: document.getElementById('mat-periodo').value,
     horasPrev: parseFloat(document.getElementById('mat-horas-prev').value)||0,
     tiposHora: _tiposEditando,
-    horarios: _horariosEditando,
-    horario: horarioToString(_horariosEditando),
     modulos: _modulosEditando,
     color: getSelectedColor(),
     notas: document.getElementById('mat-notas').value.trim()
@@ -2750,6 +2675,7 @@ function openModalClase(id, fecha) {
     document.getElementById('cl-fin').value = c.fin || '';
     document.getElementById('cl-horas').value = c.horas || '';
     document.getElementById('cl-tema').value = c.tema || '';
+    document.getElementById('cl-link').value = c.linkRecurso || '';
     document.getElementById('cl-estado').value = c.estado || 'planificada';
     document.getElementById('cl-notas').value = c.notas || '';
   } else {
@@ -2758,6 +2684,7 @@ function openModalClase(id, fecha) {
     document.getElementById('cl-fin').value = '10:00';
     document.getElementById('cl-horas').value = '2';
     document.getElementById('cl-tema').value = '';
+    document.getElementById('cl-link').value = '';
     document.getElementById('cl-estado').value = 'planificada';
     document.getElementById('cl-notas').value = '';
     actualizarTiposHoraClase();
@@ -2784,26 +2711,54 @@ function guardarClase() {
   const id = document.getElementById('cl-id').value || uid();
   const matId = document.getElementById('cl-materia').value;
   const moduloId = document.getElementById('cl-modulo').value;
+  const fecha = document.getElementById('cl-fecha').value;
+  const inicio = document.getElementById('cl-inicio').value;
+  const fin = document.getElementById('cl-fin').value;
+  const horas = parseFloat(document.getElementById('cl-horas').value)||0;
+
+  if (!fecha || !matId) { toast('Completá fecha y materia','err'); return; }
+
+  // Validación: módulo obligatorio
+  if (!moduloId) { toast('Seleccioná un módulo para la clase','err'); return; }
+
+  // Validación: solapamiento de horarios (mismo día, misma materia)
+  if (inicio && fin) {
+    const ini1 = inicio.replace(':','');
+    const fin1 = fin.replace(':','');
+    const solapada = DB.clases.find(c => {
+      if (c.id === id) return false; // ignorar la misma clase en edición
+      if (c.fecha !== fecha) return false;
+      if (!c.inicio || !c.fin) return false;
+      const ini2 = c.inicio.replace(':','');
+      const fin2 = c.fin.replace(':','');
+      return ini1 < fin2 && fin1 > ini2; // solapamiento
+    });
+    if (solapada) {
+      const mSol = DB.materias.find(x=>x.id===solapada.materiaId);
+      toast(`Conflicto de horario con "${mSol?.nombre||'otra clase'}" (${solapada.inicio}–${solapada.fin})`,'err');
+      return;
+    }
+  }
+
   const m = DB.materias.find(x=>x.id===matId);
   const mod = m?.modulos?.find(x=>x.id===moduloId);
   const tipo = mod ? m?.tiposHora?.find(t=>t.id===mod.tipoId) : null;
-  const horas = parseFloat(document.getElementById('cl-horas').value)||0;
+
   const obj = {
-    id, fecha: document.getElementById('cl-fecha').value,
+    id, fecha, matId,
     materiaId: matId,
     moduloId: moduloId || null,
     moduloNombre: mod?.nombre || '',
     tipoHoraId: tipo?.id || null,
     tipoHoraNombre: tipo?.nombre || '',
     valorHoraSnapshot: tipo?.valor || 0,
-    inicio: document.getElementById('cl-inicio').value,
-    fin: document.getElementById('cl-fin').value,
-    horas,
+    inicio, fin, horas,
     tema: document.getElementById('cl-tema').value.trim(),
+    linkRecurso: document.getElementById('cl-link').value.trim(),
     estado: document.getElementById('cl-estado').value,
     notas: document.getElementById('cl-notas').value.trim()
   };
-  if (!obj.fecha || !obj.materiaId) { toast('Completá fecha y materia','err'); return; }
+
   const idx = DB.clases.findIndex(c=>c.id===id);
   if (idx>=0) DB.clases[idx]=obj; else DB.clases.push(obj);
   save(); renderClases(); toast('Clase guardada'); closeModal('modal-clase');
@@ -3153,7 +3108,24 @@ function delFeriado(id) {
 // ============================================================
 // CALENDARIO
 // ============================================================
-let calAnio = new Date().getFullYear();
+let _calFiltroTipo = 'todos'; // 'todos' | 'clases' | 'actividades'
+let _calFiltroModulo = null;
+
+function calFiltroTipoSet(tipo) {
+  _calFiltroTipo = tipo;
+  document.querySelectorAll('#cal-filtro-tipo .chip').forEach(c =>
+    c.classList.toggle('active', c.dataset.tipo === tipo)
+  );
+  renderCalendario();
+}
+
+function calFiltroModuloToggle(modId) {
+  _calFiltroModulo = _calFiltroModulo === modId ? null : modId;
+  document.querySelectorAll('#cal-filtro-modulos .chip').forEach(c =>
+    c.classList.toggle('active', c.dataset.mod === (_calFiltroModulo||''))
+  );
+  renderCalendario();
+}
 let calMes = new Date().getMonth();
 let calFiltroMaterias = new Set();
 let diaSeleccionado = null;
@@ -3170,6 +3142,20 @@ function renderCalendario() {
   const filtroEl = document.getElementById('cal-filtro-materias');
   filtroEl.innerHTML = `<span class="chip ${calFiltroMaterias.size===0?'active':''}" onclick="calFiltroToggleAll()">Todas</span>` +
     DB.materias.map(m=>`<span class="chip ${calFiltroMaterias.has(m.id)?'active':''}" onclick="calFiltroToggle('${m.id}')" style="${calFiltroMaterias.has(m.id)?`background:${m.color};border-color:${m.color};color:#fff`:''}">${m.nombre}</span>`).join('');
+
+  // Filtro de módulos — solo de las materias seleccionadas
+  const matsActivas = calFiltroMaterias.size > 0
+    ? DB.materias.filter(m => calFiltroMaterias.has(m.id))
+    : DB.materias;
+  const todosModulos = [];
+  matsActivas.forEach(m => (m.modulos||[]).forEach(mod => {
+    if (!todosModulos.find(x=>x.id===mod.id)) todosModulos.push({...mod, matColor: m.color});
+  }));
+  const modFiltroEl = document.getElementById('cal-filtro-modulos');
+  modFiltroEl.innerHTML = todosModulos.length ? todosModulos.map(mod =>
+    `<span class="chip ${_calFiltroModulo===mod.id?'active':''}" data-mod="${mod.id}" onclick="calFiltroModuloToggle('${mod.id}')"
+      style="${_calFiltroModulo===mod.id?`background:${mod.matColor};border-color:${mod.matColor};color:#fff`:''}">
+      ${mod.nombre}</span>`).join('') : '';
 
   // DOW
   const DOWS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -3206,10 +3192,16 @@ function renderCalendario() {
     const fer = DB.feriados.find(f=>f.fecha===cell.fecha);
     const clases = DB.clases.filter(c => {
       if (c.fecha !== cell.fecha) return false;
+      if (_calFiltroTipo === 'actividades') return false;
       if (calFiltroMaterias.size > 0 && !calFiltroMaterias.has(c.materiaId)) return false;
+      if (_calFiltroModulo && c.moduloId !== _calFiltroModulo) return false;
       return true;
     });
-    const acts = DB.actividades.filter(a=>a.fecha===cell.fecha);
+    const acts = DB.actividades.filter(a => {
+      if (a.fecha !== cell.fecha) return false;
+      if (_calFiltroTipo === 'clases') return false;
+      return true;
+    });
     const evs = [];
     if (fer) evs.push(`<div class="cal-event feriado">${fer.desc.substring(0,18)}</div>`);
     clases.forEach(c => {
@@ -3258,6 +3250,7 @@ function calDiaClick(fecha) {
         </div>
         ${c.inicio?`<div class="text-sm text-muted">${c.inicio}–${c.fin}</div>`:''}
         ${c.tema?`<div class="text-sm mt8">${c.tema}</div>`:''}
+        ${c.linkRecurso?`<a href="${c.linkRecurso}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">🔗 Abrir recurso</a>`:''}
         ${c.notas?`<div class="text-sm text-muted mt8">${c.notas}</div>`:''}
         <div class="flex gap8 mt8">
           <button class="btn btn-secondary btn-sm" onclick="openModalClase('${c.id}');closeModal('modal-dia')">✎ Editar</button>
