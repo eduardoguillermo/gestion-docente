@@ -1,0 +1,23 @@
+{
+  "name": "Gestión Docente",
+  "short_name": "Docente",
+  "display": "standalone",
+  "background_color": "#0f1b35",
+  "theme_color": "#1a2744",
+  "start_url": "/gestion-docente/",
+  "scope": "/gestion-docente/",
+  "shortcuts": [
+    {
+      "name": "Registrar salida",
+      "short_name": "Salida",
+      "description": "Registrar salida de la institución",
+      "url": "/gestion-docente/?accion=salida"
+    },
+    {
+      "name": "Registrar llegada",
+      "short_name": "Llegada",
+      "description": "Registrar llegada a la institución",
+      "url": "/gestion-docente/?accion=llegada"
+    }
+  ]
+}
