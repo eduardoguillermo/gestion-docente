@@ -341,7 +341,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.24</div>
+  <div class="splash-version">v1.25</div>
 </div>
 
 <div id="app" style="display:none">
@@ -357,20 +357,20 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.24</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.25</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
   </header>
 
   <!-- Banner asistencia rápida -->
-  <div id="banner-asist" style="display:none;background:#C0392B;border-bottom:1px solid #a93226;padding:10px 20px">
-    <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:12px">
-      <span style="font-size:18px">🏛</span>
-      <span class="text-sm" id="banner-asist-txt" style="color:#fff"></span>
-      <div class="flex gap8 ml-auto">
-        <button class="btn btn-primary btn-sm" id="banner-asist-btn" onclick="registrarAsistRapida()"></button>
-        <button class="btn btn-secondary btn-sm" onclick="descartarBannerAsist()">Ahora no</button>
+  <div id="banner-asist" style="display:none;background:#C0392B;border-bottom:1px solid #a93226;padding:6px 16px">
+    <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:10px">
+      <span style="font-size:14px">🏛</span>
+      <span style="font-size:12px;color:#fff" id="banner-asist-txt"></span>
+      <div class="flex gap8 ml-auto" style="flex-shrink:0">
+        <button class="btn btn-sm" id="banner-asist-btn" onclick="registrarAsistRapida()" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:4px 12px;font-size:11px"></button>
+        <button class="btn btn-sm" onclick="descartarBannerAsist()" style="background:transparent;color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.2);padding:4px 10px;font-size:11px">✕</button>
       </div>
     </div>
   </div>
