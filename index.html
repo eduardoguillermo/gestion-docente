@@ -369,7 +369,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.36</div>
+  <div class="splash-version">v1.37</div>
 </div>
 
 <div id="app" style="display:none">
@@ -385,7 +385,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.36</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.37</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -1897,13 +1897,14 @@ const BANNER_ASIST_KEY = 'docente_banner_asist_descartado';
 
 function verificarBannerAsistencia() {
   const hoyStr = hoy();
-  const descartado = localStorage.getItem(BANNER_ASIST_KEY);
-  if (descartado === hoyStr) return;
 
   const registroHoy = DB.asistencias.filter(a => a.fecha === hoyStr);
   const sinSalida = registroHoy.find(a => !a.salida || a.salida === '');
-  const todoCompleto = registroHoy.length > 0 && !sinSalida;
-  if (todoCompleto) return;
+
+  // Si hay una entrada sin salida, no registrar otra — solo mostrar banner de salida
+  // Si todos tienen salida (o no hay registros), habilitar nueva entrada
+  // Nota: se eliminó el bloqueo por fecha (BANNER_ASIST_KEY) para permitir
+  // múltiples jornadas en el mismo día (ej: mañana y tarde)
 
   // Si detección WiFi está activa, usarla como método alternativo al GPS
   if (DB.config.redWifi) {
@@ -1925,25 +1926,32 @@ function _mostrarBannerAsistencia(registroHoy, sinSalida, hoyStr) {
     const btn = document.getElementById('banner-asist-btn');
     if (!banner) return;
 
-    if (!registroHoy.length) {
-      // ✅ Registrar llegada AUTOMÁTICAMENTE
-      const horaActual = formatHoraActual();
-      DB.asistencias.push({
-        id: uid(), fecha: hoyStr,
-        entrada: horaActual, salida: '', horas: 0, notas: ''
-      });
-      save();
-      toast(`📍 Llegada registrada automáticamente: ${horaActual}`);
-      if (document.getElementById('tab-asistencia').classList.contains('active')) renderAsistencia();
-      // Ahora mostrar banner de salida
-      txt.textContent = `Llegada registrada a las ${horaActual}. ¿Registrás tu salida cuando te vayas?`;
-      btn.textContent = '✓ Registrar salida';
-      banner.style.display = '';
-    } else if (sinSalida) {
+    if (sinSalida) {
       // Hay entrada sin salida → mostrar banner de salida
       txt.textContent = `Llegaste a las ${sinSalida.entrada}. ¿Registrás tu salida? (${formatHoraActual()})`;
       btn.textContent = '✓ Registrar salida';
       banner._asistId = sinSalida.id;
+      banner.style.display = '';
+    } else {
+      // Sin entrada abierta (primer ingreso del día o regreso tras salida registrada)
+      // ✅ Registrar llegada AUTOMÁTICAMENTE
+      const horaActual = formatHoraActual();
+      const esRegreso = registroHoy.length > 0;
+      DB.asistencias.push({
+        id: uid(), fecha: hoyStr,
+        entrada: horaActual, salida: '', horas: 0,
+        notas: esRegreso ? 'Regreso' : ''
+      });
+      save();
+      const msg = esRegreso
+        ? `📍 Regreso registrado automáticamente: ${horaActual}`
+        : `📍 Llegada registrada automáticamente: ${horaActual}`;
+      toast(msg);
+      if (document.getElementById('tab-asistencia').classList.contains('active')) renderAsistencia();
+      // Mostrar banner de salida
+      txt.textContent = `${esRegreso ? 'Regreso' : 'Llegada'} registrado a las ${horaActual}. ¿Registrás tu salida cuando te vayas?`;
+      btn.textContent = '✓ Registrar salida';
+      banner._asistId = null;
       banner.style.display = '';
     }
 }
