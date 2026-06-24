@@ -363,7 +363,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   </div>
   <div class="splash-title">Gestión Docente</div>
   <div class="splash-sub">Control de actividad académica</div>
-  <div style="font-family:'Dancing Script',cursive;font-size:16px;color:var(--acc2);opacity:0.7;margin-top:12px">Development by Guille</div>
+  <div style="position:absolute;bottom:15%;right:8%;font-family:'Dancing Script',cursive;font-size:16px;color:var(--acc2);opacity:0.65;pointer-events:none">Development by Guille</div>
 
   <div id="login-box">
     <div class="login-label">Ingresá tu contraseña para continuar</div>
@@ -373,7 +373,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.40</div>
+  <div class="splash-version">v1.41</div>
 </div>
 
 <div id="app" style="display:none">
@@ -388,11 +388,11 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <h1 id="hdr-nombre">Gestión Docente</h1>
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
-    <div style="position:absolute;left:50%;transform:translateX(-50%);pointer-events:none">
+    <div style="position:absolute;left:75%;transform:translateX(-50%);pointer-events:none">
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.40</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.41</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
