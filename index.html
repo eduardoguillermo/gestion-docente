@@ -51,6 +51,14 @@ if ('serviceWorker' in navigator) {
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg0); color: var(--txt); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
 
+/* Toggle switch */
+.toggle-switch { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; cursor:pointer; inset:0; background:var(--bg3); border-radius:24px; transition:.3s; border:1px solid var(--brd2); }
+.toggle-slider:before { position:absolute; content:""; height:18px; width:18px; left:2px; bottom:2px; background:var(--muted); border-radius:50%; transition:.3s; }
+.toggle-switch input:checked + .toggle-slider { background:rgba(79,158,248,0.25); border-color:var(--acc); }
+.toggle-switch input:checked + .toggle-slider:before { transform:translateX(20px); background:var(--acc); }
+
 /* Splash */
 #splash {
   position: fixed; inset: 0; background: var(--bg0);
@@ -361,7 +369,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.34</div>
+  <div class="splash-version">v1.35</div>
 </div>
 
 <div id="app" style="display:none">
@@ -377,7 +385,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.34</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.35</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -802,6 +810,28 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <button class="btn btn-secondary btn-sm" onclick="testearGPS()">🧭 Testear ahora</button>
       </div>
       <div id="gps-status" class="text-muted text-sm" style="margin-top:8px"></div>
+    </div>
+    <div class="divider"></div>
+    <!-- Detección por red WiFi -->
+    <div class="card-title">Detección por red WiFi</div>
+    <div class="text-muted text-sm mb8">Registra la entrada automáticamente cuando detecta que estás en la red del trabajo.</div>
+    <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px">
+      <div class="flex-center gap8 mb12">
+        <span style="font-size:13px;color:var(--txt)">Activar detección WiFi</span>
+        <label class="toggle-switch" style="margin-left:auto">
+          <input type="checkbox" id="cfg-red-wifi" onchange="onToggleRedWifi(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div id="cfg-red-wifi-panel" style="display:none">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Redes memorizadas (identificadas por rango IP local /24)</div>
+        <div id="cfg-redes-lista" style="margin-bottom:10px"></div>
+        <div class="flex gap8">
+          <button class="btn btn-secondary btn-sm" onclick="detectarRedAhora()">🔍 Detectar red actual</button>
+          <button class="btn btn-danger btn-sm" onclick="limpiarRedesConocidas()">🗑 Limpiar todas</button>
+        </div>
+        <div id="cfg-red-status" class="text-muted text-sm" style="margin-top:8px"></div>
+      </div>
     </div>
     <div class="divider"></div>
     <div class="card-title">Biblioteca de módulos</div>
@@ -1486,7 +1516,7 @@ document.addEventListener('DOMContentLoaded', iniciarSplash);
 // ESTADO GLOBAL
 // ============================================================
 let DB = {
-  config: { nombre: '', inst: '', moneda: 'UYU', geoLat: null, geoLng: null, geoRadio: 200 },
+  config: { nombre: '', inst: '', moneda: 'UYU', geoLat: null, geoLng: null, geoRadio: 200, redWifi: false, redesConocidas: {} },
   periodos: [],
   materias: [],
   clases: [],
@@ -1709,6 +1739,141 @@ function testearGPS() {
   }, { enableHighAccuracy: true, timeout: 10000 });
 }
 
+// ============================================================
+// DETECCIÓN DE RED WIFI
+// ============================================================
+
+function _getIPLocal() {
+  return new Promise(resolve => {
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      const ips = new Set();
+      pc.createDataChannel('');
+      pc.createOffer()
+        .then(o => pc.setLocalDescription(o))
+        .catch(() => resolve(null));
+      pc.onicecandidate = e => {
+        if (!e || !e.candidate) { pc.close(); resolve(ips.size ? [...ips][0] : null); return; }
+        const m = e.candidate.candidate.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+        if (m && !m[1].startsWith('0.')) ips.add(m[1]);
+      };
+      setTimeout(() => { pc.close(); resolve(ips.size ? [...ips][0] : null); }, 3000);
+    } catch { resolve(null); }
+  });
+}
+
+function _rangoRed(ip) {
+  if (!ip) return null;
+  return ip.split('.').slice(0, 3).join('.') + '.0/24';
+}
+
+async function detectarRedActual() {
+  const ipLocal = await _getIPLocal();
+  const rango = _rangoRed(ipLocal);
+  return { ipLocal, rango };
+}
+
+async function verificarRedTrabajo() {
+  if (!DB.config.redWifi) return false;
+  const { ipLocal, rango } = await detectarRedActual();
+  if (!rango) return false;
+  const redes = DB.config.redesConocidas || {};
+  if (redes[rango] !== undefined) {
+    return redes[rango] === 'trabajo';
+  }
+  // Red nueva → preguntar al usuario
+  const esTrab = confirm(`Red nueva detectada.
+IP local: ${ipLocal} (rango ${rango})
+
+¿Es la red del trabajo?`);
+  const nombre = esTrab ? 'trabajo' : 'otra';
+  DB.config.redesConocidas = { ...redes, [rango]: nombre };
+  save();
+  renderRedesLista();
+  return esTrab;
+}
+
+function renderRedesLista() {
+  const el = document.getElementById('cfg-redes-lista');
+  if (!el) return;
+  const redes = DB.config.redesConocidas || {};
+  const claves = Object.keys(redes);
+  if (!claves.length) {
+    el.innerHTML = '<div class="text-muted text-sm">Sin redes memorizadas todavía.</div>';
+    return;
+  }
+  el.innerHTML = claves.map(clave => {
+    const nombre = redes[clave];
+    const esTrab = nombre === 'trabajo';
+    return `<div class="flex-center gap8 mb8" style="background:var(--bg3);padding:8px 10px;border-radius:var(--radius);border:1px solid var(--brd)">
+      <span style="font-size:13px;font-family:monospace;color:var(--txt2)">${clave}</span>
+      <span class="badge ${esTrab ? 'badge-grn' : 'badge-muted'}" style="margin-left:4px">${esTrab ? '🏢 trabajo' : '🏠 otra'}</span>
+      <button class="btn-icon" style="margin-left:auto;font-size:12px" title="Cambiar clasificación" onclick="reclasificarRed('${clave}')">${esTrab ? '→ otra' : '→ trabajo'}</button>
+      <button class="btn-icon" style="color:var(--red);font-size:12px" title="Olvidar red" onclick="olvidarRed('${clave}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function reclasificarRed(clave) {
+  const redes = DB.config.redesConocidas || {};
+  redes[clave] = redes[clave] === 'trabajo' ? 'otra' : 'trabajo';
+  DB.config.redesConocidas = redes;
+  save();
+  renderRedesLista();
+  toast('Red reclasificada');
+}
+
+function olvidarRed(clave) {
+  if (!confirm(`¿Olvidar la red ${clave}?`)) return;
+  const redes = { ...DB.config.redesConocidas };
+  delete redes[clave];
+  DB.config.redesConocidas = redes;
+  save();
+  renderRedesLista();
+  toast('Red eliminada');
+}
+
+function limpiarRedesConocidas() {
+  if (!confirm('¿Borrar todas las redes memorizadas?')) return;
+  DB.config.redesConocidas = {};
+  save();
+  renderRedesLista();
+  toast('Redes eliminadas');
+}
+
+function onToggleRedWifi(activo) {
+  document.getElementById('cfg-red-wifi-panel').style.display = activo ? '' : 'none';
+  // Guardar inmediatamente el toggle sin esperar "Guardar"
+  DB.config.redWifi = activo;
+  save();
+  toast(activo ? '🌐 Detección WiFi activada' : 'Detección WiFi desactivada');
+}
+
+async function detectarRedAhora() {
+  const statusEl = document.getElementById('cfg-red-status');
+  statusEl.textContent = '⏳ Detectando...';
+  const { ipLocal, rango } = await detectarRedActual();
+  if (!rango) {
+    statusEl.textContent = '⚠ No se pudo detectar la IP local (WebRTC bloqueado).';
+    return;
+  }
+  const redes = DB.config.redesConocidas || {};
+  if (redes[rango] !== undefined) {
+    statusEl.textContent = `✓ Red actual: ${rango} → clasificada como "${redes[rango]}"`;
+  } else {
+    statusEl.textContent = `Red nueva: ${rango} (IP: ${ipLocal}) — no memorizada aún.`;
+    const esTrab = confirm(`Red detectada: ${rango}
+IP local: ${ipLocal}
+
+¿Es la red del trabajo?`);
+    redes[rango] = esTrab ? 'trabajo' : 'otra';
+    DB.config.redesConocidas = redes;
+    save();
+    renderRedesLista();
+    statusEl.textContent = `✓ Guardada como "${redes[rango]}"`;
+  }
+}
+
 function verificarGeoPosicion(callback) {
   const cfg = DB.config;
   // Si no hay coordenadas configuradas, siempre mostrar banner
@@ -1736,9 +1901,21 @@ function verificarBannerAsistencia() {
   const todoCompleto = registroHoy.length > 0 && !sinSalida;
   if (todoCompleto) return;
 
+  // Si detección WiFi está activa, usarla como método alternativo al GPS
+  if (DB.config.redWifi) {
+    verificarRedTrabajo().then(esTrabajo => {
+      if (esTrabajo) _mostrarBannerAsistencia(registroHoy, sinSalida, hoyStr);
+    });
+    return;
+  }
+
   verificarGeoPosicion(dentroDeZona => {
     if (!dentroDeZona) return;
+    _mostrarBannerAsistencia(registroHoy, sinSalida, hoyStr);
+  });
+}
 
+function _mostrarBannerAsistencia(registroHoy, sinSalida, hoyStr) {
     const banner = document.getElementById('banner-asist');
     const txt = document.getElementById('banner-asist-txt');
     const btn = document.getElementById('banner-asist-btn');
@@ -1765,7 +1942,6 @@ function verificarBannerAsistencia() {
       banner._asistId = sinSalida.id;
       banner.style.display = '';
     }
-  });
 }
 
 function formatHoraActual() {
@@ -2450,6 +2626,11 @@ function openConfigModal() {
   document.getElementById('gps-status').textContent = DB.config.geoLat
     ? `✓ Ubicación configurada: ${DB.config.geoLat}, ${DB.config.geoLng} · Radio: ${DB.config.geoRadio}m`
     : 'Sin ubicación configurada — el banner se mostrará siempre al abrir la app.';
+  // WiFi
+  const redActiva = DB.config.redWifi || false;
+  document.getElementById('cfg-red-wifi').checked = redActiva;
+  document.getElementById('cfg-red-wifi-panel').style.display = redActiva ? '' : 'none';
+  renderRedesLista();
   renderPeriodosLista();
   renderBibModulosLista();
   actualizarInfoBkup();
@@ -2466,6 +2647,7 @@ function guardarConfig() {
   DB.config.geoLat = isNaN(lat) ? null : lat;
   DB.config.geoLng = isNaN(lng) ? null : lng;
   DB.config.geoRadio = radio;
+  DB.config.redWifi = document.getElementById('cfg-red-wifi').checked;
   save();
   actualizarHeader();
   toast('Configuración guardada');
