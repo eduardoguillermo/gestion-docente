@@ -1,7 +1,7 @@
 {
   "name": "Gestión Docente",
   "short_name": "Docente",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#0f1b35",
   "theme_color": "#1a2744",
   "start_url": "/gestion-docente/",
