@@ -333,8 +333,10 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   .toast { min-width: unset; }
 
   /* Banner asistencia */
-  #banner-asist { padding: 8px 12px; }
+  #banner-asist { padding: 0; }
   #banner-asist .flex { flex-wrap: wrap; gap: 8px; }
+  #banner-asist-full { padding: 6px 16px; }
+  #banner-asist-mini { padding: 3px 16px; }
 
   /* Ocultar columnas menos importantes en tablas */
   .col-hide-mob { display: none; }
@@ -369,7 +371,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.37</div>
+  <div class="splash-version">v1.38</div>
 </div>
 
 <div id="app" style="display:none">
@@ -385,20 +387,31 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <div class="header-sub" id="hdr-periodo" style="display:none">Sin período activo</div>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.37</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.38</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
   </header>
 
   <!-- Banner asistencia rápida -->
-  <div id="banner-asist" style="display:none;background:#C0392B;border-bottom:1px solid #a93226;padding:6px 16px">
-    <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:10px">
-      <span style="font-size:14px">🏛</span>
-      <span style="font-size:12px;color:#fff" id="banner-asist-txt"></span>
-      <div class="flex gap8 ml-auto" style="flex-shrink:0">
-        <button class="btn btn-sm" id="banner-asist-btn" onclick="registrarAsistRapida()" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:4px 12px;font-size:11px"></button>
-        <button class="btn btn-sm" onclick="descartarBannerAsist()" style="background:transparent;color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.2);padding:4px 10px;font-size:11px">✕</button>
+  <div id="banner-asist" style="display:none;background:#C0392B;border-bottom:1px solid #a93226;transition:all 0.2s">
+    <!-- Versión expandida -->
+    <div id="banner-asist-full" style="padding:6px 16px">
+      <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px">🏛</span>
+        <span style="font-size:12px;color:#fff" id="banner-asist-txt"></span>
+        <div class="flex gap8 ml-auto" style="flex-shrink:0">
+          <button class="btn btn-sm" id="banner-asist-btn" onclick="registrarAsistRapida()" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:4px 12px;font-size:11px"></button>
+          <button class="btn btn-sm" onclick="minimizerBannerAsist()" title="Minimizar" style="background:transparent;color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.2);padding:4px 10px;font-size:11px">−</button>
+        </div>
+      </div>
+    </div>
+    <!-- Versión minimizada -->
+    <div id="banner-asist-mini" style="display:none;padding:3px 16px;cursor:pointer;opacity:0.75" onclick="expandirBannerAsist()" title="Expandir">
+      <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px">🏛</span>
+        <span style="font-size:10px;color:#fff" id="banner-asist-mini-txt">Salida pendiente</span>
+        <span style="font-size:10px;color:rgba(255,255,255,0.6);margin-left:auto">▲ expandir</span>
       </div>
     </div>
   </div>
@@ -1932,6 +1945,8 @@ function _mostrarBannerAsistencia(registroHoy, sinSalida, hoyStr) {
       btn.textContent = '✓ Registrar salida';
       banner._asistId = sinSalida.id;
       banner.style.display = '';
+      document.getElementById('banner-asist-full').style.display = '';
+      document.getElementById('banner-asist-mini').style.display = 'none';
     } else {
       // Sin entrada abierta (primer ingreso del día o regreso tras salida registrada)
       // ✅ Registrar llegada AUTOMÁTICAMENTE
@@ -1953,6 +1968,8 @@ function _mostrarBannerAsistencia(registroHoy, sinSalida, hoyStr) {
       btn.textContent = '✓ Registrar salida';
       banner._asistId = null;
       banner.style.display = '';
+      document.getElementById('banner-asist-full').style.display = '';
+      document.getElementById('banner-asist-mini').style.display = 'none';
     }
 }
 
@@ -1992,6 +2009,23 @@ function registrarAsistRapida() {
 
   banner.style.display = 'none';
   if (document.getElementById('tab-asistencia').classList.contains('active')) renderAsistencia();
+}
+
+function minimizerBannerAsist() {
+  document.getElementById('banner-asist-full').style.display = 'none';
+  document.getElementById('banner-asist-mini').style.display = '';
+  // Actualizar texto mini con hora de entrada
+  const hoyStr = hoy();
+  const sinSalida = DB.asistencias.find(a => a.fecha === hoyStr && (!a.salida || a.salida === ''));
+  const miniTxt = document.getElementById('banner-asist-mini-txt');
+  if (miniTxt && sinSalida) {
+    miniTxt.textContent = `Salida pendiente — entrada: ${sinSalida.entrada}`;
+  }
+}
+
+function expandirBannerAsist() {
+  document.getElementById('banner-asist-mini').style.display = 'none';
+  document.getElementById('banner-asist-full').style.display = '';
 }
 
 function descartarBannerAsist() {
