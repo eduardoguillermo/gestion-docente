@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestion-docente-v1.37';
+const CACHE_NAME = 'gestion-docente-v1.38';
 const URL_APP = '/gestion-docente/';
 
 self.addEventListener('install', e => {
