@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestion-docente-v1.41';
+const CACHE_NAME = 'gestion-docente-v1.42';
 const URL_APP = '/gestion-docente/';
 
 self.addEventListener('install', e => {
@@ -35,3 +35,4 @@ self.addEventListener('fetch', e => {
 self.addEventListener('message', e => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
+
