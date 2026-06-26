@@ -373,7 +373,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.41</div>
+  <div class="splash-version">v1.42</div>
 </div>
 
 <div id="app" style="display:none">
@@ -392,9 +392,9 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.41</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.42</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
-      <button class="btn btn-secondary btn-sm" onclick="if(confirm('¿Cerrar sesión?'))cerrarSesion()" title="Cerrar sesión">⏻</button>
+      <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
   </header>
 
@@ -1491,7 +1491,29 @@ async function intentarLogin() {
   }
 }
 
-function cerrarSesion() {
+async function cerrarSesion() {
+  // 1. Verificar asistencia pendiente
+  const hoyStr = hoy();
+  const sinSalida = DB.asistencias.find(a => a.fecha===hoyStr && (!a.salida||a.salida===''));
+  if (sinSalida) {
+    if (confirm('Tenés una asistencia sin salida registrada. ¿Registrar salida ahora?')) {
+      const horaActual = formatHoraActual();
+      sinSalida.salida = horaActual;
+      const [h1,m1] = sinSalida.entrada.split(':').map(Number);
+      const [h2,m2] = horaActual.split(':').map(Number);
+      sinSalida.horas = Math.round(((h2*60+m2)-(h1*60+m1))/60*10)/10;
+      save();
+      toast(`🚪 Salida registrada: ${horaActual} · ${sinSalida.horas} hs`);
+    }
+  }
+  // 2. Snapshot a localStorage
+  hacerBackup(false);
+  // 3. Si hay token Drive/OneDrive, subir backup
+  const cfg = getBkupCfg();
+  if ((cfg.destino === 'gdrive' && _gdriveToken) || (cfg.destino === 'onedrive' && _onedriveToken)) {
+    try { await enviarBkupExterno(JSON.stringify(DB)); } catch(e) {}
+  }
+  // 4. Cerrar sesión
   localStorage.removeItem(AUTH_KEY);
   location.reload();
 }
@@ -4722,3 +4744,4 @@ document.getElementById('pago-fecha').value = hoy();
 </script>
 </body>
 </html>
+
