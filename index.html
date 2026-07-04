@@ -373,7 +373,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.42</div>
+  <div class="splash-version">v1.43</div>
 </div>
 
 <div id="app" style="display:none">
@@ -392,7 +392,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.42</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.43</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -1539,6 +1539,9 @@ function entrarApp() {
 }
 
 function iniciarSplash() {
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(()=>{});
+  }
   const splash = document.getElementById('splash');
   const t0 = Date.now();
   if (estaAutenticado()) {
@@ -2339,6 +2342,63 @@ let _carpetaHandle = null;
 let _gdriveToken = null;
 let _onedriveToken = null;
 
+// ── Persistencia del handle de carpeta local (IndexedDB) ──────────────
+// Antes _carpetaHandle solo vivía en memoria y se perdía al cerrar la app;
+// ahora se guarda igual que en FinanzasPro Ledger / Control Financiero.
+const GD_FOLDER_DB    = 'gd-folder-db';
+const GD_FOLDER_STORE = 'handles';
+const GD_FOLDER_KEY   = 'carpeta';
+
+function gdAbrirFolderDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(GD_FOLDER_DB, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(GD_FOLDER_STORE);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+async function gdGuardarHandleIDB(handle) {
+  try {
+    const db = await gdAbrirFolderDB();
+    const tx = db.transaction(GD_FOLDER_STORE, 'readwrite');
+    tx.objectStore(GD_FOLDER_STORE).put(handle, GD_FOLDER_KEY);
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+    db.close();
+  } catch(e) { console.warn('gdGuardarHandleIDB:', e); }
+}
+async function gdLeerHandleIDB() {
+  try {
+    const db = await gdAbrirFolderDB();
+    const tx = db.transaction(GD_FOLDER_STORE, 'readonly');
+    const h = await new Promise((res, rej) => {
+      const r = tx.objectStore(GD_FOLDER_STORE).get(GD_FOLDER_KEY);
+      r.onsuccess = e => res(e.target.result);
+      r.onerror   = e => rej(e.target.error);
+    });
+    db.close();
+    return h || null;
+  } catch(e) { return null; }
+}
+async function gdRestaurarCarpetaGuardada() {
+  if (!('showDirectoryPicker' in window)) return;
+  const handle = await gdLeerHandleIDB();
+  if (!handle) return;
+  try {
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      _carpetaHandle = handle;
+      const el = document.getElementById('cfg-carpeta-nombre');
+      if (el) { el.textContent = '📁 ' + handle.name; el.style.color = ''; }
+    } else if (perm === 'prompt') {
+      // El permiso venció — no se puede re-pedir sin gesto del usuario.
+      // Se deja como "pendiente" y el próximo click en "Elegir carpeta" lo reactiva.
+      window._pendingCarpetaHandle = handle;
+      const el = document.getElementById('cfg-carpeta-nombre');
+      if (el) { el.textContent = '📁 ' + handle.name + ' · requiere permiso (tocá "Elegir carpeta")'; el.style.color = 'var(--warn, #b45309)'; }
+    }
+  } catch(e) { console.warn('gdRestaurarCarpeta:', e); }
+}
+
 function getBkupCfg() {
   try { return JSON.parse(localStorage.getItem(BKUP_CFG_KEY)) || { destino: 'local' }; }
   catch(e) { return { destino: 'local' }; }
@@ -2359,9 +2419,9 @@ function cargarConfigBkupUI() {
   if (sel) { sel.value = cfg.destino || 'local'; onChangeBkupDestino(); }
   if (cfg.gdriveClientId) document.getElementById('cfg-gdrive-client-id').value = cfg.gdriveClientId;
   if (cfg.onedriveClientId) document.getElementById('cfg-onedrive-client-id').value = cfg.onedriveClientId;
-  if (cfg.carpetaNombre) document.getElementById('cfg-carpeta-nombre').textContent = '📁 ' + cfg.carpetaNombre;
   if (_gdriveToken) document.getElementById('gdrive-status').textContent = '✓ Conectado';
   if (_onedriveToken) document.getElementById('onedrive-status').textContent = '✓ Conectado';
+  gdRestaurarCarpetaGuardada();
 }
 
 function bkupTimestamp() {
@@ -2381,7 +2441,24 @@ function descargarBkupArchivo(data) {
 async function seleccionarCarpetaLocal() {
   if (!('showDirectoryPicker' in window)) { toast('Tu navegador no soporta esta función. Usá Chrome o Edge desktop.','err'); return; }
   try {
+    // Reactivar handle pendiente si el permiso solo había vencido
+    if (window._pendingCarpetaHandle) {
+      try {
+        const perm = await window._pendingCarpetaHandle.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          _carpetaHandle = window._pendingCarpetaHandle;
+          window._pendingCarpetaHandle = null;
+          const cfg = getBkupCfg(); cfg.carpetaNombre = _carpetaHandle.name; saveBkupCfg(cfg);
+          const el = document.getElementById('cfg-carpeta-nombre');
+          if (el) { el.textContent = '📁 ' + _carpetaHandle.name; el.style.color = ''; }
+          toast('Carpeta reactivada: ' + _carpetaHandle.name);
+          return;
+        }
+      } catch(ep) {}
+      window._pendingCarpetaHandle = null;
+    }
     _carpetaHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    await gdGuardarHandleIDB(_carpetaHandle);
     const cfg = getBkupCfg(); cfg.carpetaNombre = _carpetaHandle.name; saveBkupCfg(cfg);
     document.getElementById('cfg-carpeta-nombre').textContent = '📁 ' + _carpetaHandle.name;
     toast('Carpeta seleccionada: ' + _carpetaHandle.name);
