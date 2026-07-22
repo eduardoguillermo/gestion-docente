@@ -351,6 +351,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 }
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <div id="splash">
@@ -375,7 +376,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.46</div>
+  <div class="splash-version">v1.47</div>
 </div>
 
 <div id="app" style="display:none">
@@ -394,7 +395,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.46</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.47</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -918,7 +919,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
           <label>Client ID de Google</label>
           <input id="cfg-gdrive-client-id" placeholder="xxxxxx.apps.googleusercontent.com" style="margin-top:4px">
         </div>
-        <div class="text-muted text-sm mb8">Creá un proyecto en <a href="https://console.cloud.google.com" target="_blank" rel="noopener" style="color:var(--acc)">Google Cloud Console</a>, habilitá la Drive API y creá credenciales OAuth 2.0. Usá <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">https://eduardoguillermo.github.io/gestion-docente/</code> como origen autorizado.</div>
+        <div class="text-muted text-sm mb8">Creá un proyecto en <a href="https://console.cloud.google.com" target="_blank" rel="noopener" style="color:var(--acc)">Google Cloud Console</a>, habilitá la Drive API y creá credenciales OAuth 2.0 (tipo "Aplicación web"). Agregá <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">https://eduardoguillermo.github.io</code> como origen de JavaScript autorizado.</div>
         <button class="btn btn-secondary btn-sm" onclick="conectarGDrive()">🔗 Conectar con Google Drive</button>
         <span id="gdrive-status" class="text-muted text-sm" style="margin-left:8px"></span>
       </div>
@@ -2469,6 +2470,21 @@ const BKUP_CFG_KEY = 'docente_bkup_cfg';
 let _carpetaHandle = null;
 let _gdriveToken = null;
 let _onedriveToken = null;
+let _gdriveTokenClient = null;
+const GDRIVE_TOKEN_KEY = 'docente_gdrive_token';
+
+function guardarTokenGDrive(token, expiresInSeg) {
+  const vencimiento = Date.now() + (expiresInSeg * 1000) - 60000; // 1 min de margen
+  localStorage.setItem(GDRIVE_TOKEN_KEY, JSON.stringify({ token, vencimiento }));
+}
+function tokenGDriveGuardadoValido() {
+  try {
+    const raw = localStorage.getItem(GDRIVE_TOKEN_KEY);
+    if (!raw) return null;
+    const { token, vencimiento } = JSON.parse(raw);
+    return Date.now() < vencimiento ? token : null;
+  } catch (e) { return null; }
+}
 
 // ── Persistencia del handle de carpeta local (IndexedDB) ──────────────
 // Antes _carpetaHandle solo vivía en memoria y se perdía al cerrar la app;
@@ -2547,7 +2563,9 @@ function cargarConfigBkupUI() {
   if (sel) { sel.value = cfg.destino || 'local'; onChangeBkupDestino(); }
   if (cfg.gdriveClientId) document.getElementById('cfg-gdrive-client-id').value = cfg.gdriveClientId;
   if (cfg.onedriveClientId) document.getElementById('cfg-onedrive-client-id').value = cfg.onedriveClientId;
-  if (_gdriveToken) document.getElementById('gdrive-status').textContent = '✓ Conectado';
+  const gdriveGuardado = tokenGDriveGuardadoValido();
+  if (gdriveGuardado) { _gdriveToken = gdriveGuardado; document.getElementById('gdrive-status').textContent = '✓ Conectado'; }
+  else if (_gdriveToken) document.getElementById('gdrive-status').textContent = '✓ Conectado';
   if (_onedriveToken) document.getElementById('onedrive-status').textContent = '✓ Conectado';
   gdRestaurarCarpetaGuardada();
 }
@@ -2608,21 +2626,34 @@ function conectarGDrive() {
   const clientId = document.getElementById('cfg-gdrive-client-id').value.trim();
   if (!clientId) { toast('Ingresá el Client ID de Google','err'); return; }
   const cfg = getBkupCfg(); cfg.gdriveClientId = clientId; saveBkupCfg(cfg);
-  const scope = 'https://www.googleapis.com/auth/drive.file';
-  const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirect}&response_type=token&scope=${scope}`;
-  const popup = window.open(url, 'gdrive_auth', 'width=500,height=600');
-  window._gdriveCheck = setInterval(() => {
-    try {
-      if (popup.location.href.includes('access_token')) {
-        _gdriveToken = new URLSearchParams(popup.location.hash.slice(1)).get('access_token');
-        popup.close(); clearInterval(window._gdriveCheck);
-        document.getElementById('gdrive-status').textContent = '✓ Conectado';
-        toast('Google Drive conectado ✓');
-      }
-    } catch(e) {}
-    if (popup.closed) clearInterval(window._gdriveCheck);
-  }, 500);
+
+  if (!window.google || !google.accounts) {
+    toast('Google Identity Services todavía está cargando, probá de nuevo en un segundo','err');
+    return;
+  }
+
+  // Reusar token vigente guardado, si existe
+  const guardado = tokenGDriveGuardadoValido();
+  if (guardado) {
+    _gdriveToken = guardado;
+    document.getElementById('gdrive-status').textContent = '✓ Conectado';
+    toast('Google Drive ya estaba conectado ✓');
+    return;
+  }
+
+  _gdriveTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: (resp) => {
+      if (resp.error) { toast('Error al conectar con Google Drive','err'); return; }
+      _gdriveToken = resp.access_token;
+      guardarTokenGDrive(_gdriveToken, resp.expires_in || 3600);
+      document.getElementById('gdrive-status').textContent = '✓ Conectado';
+      toast('Google Drive conectado ✓');
+    },
+    error_callback: (err) => { toast('No se pudo conectar con Google Drive','err'); }
+  });
+  _gdriveTokenClient.requestAccessToken();
 }
 
 async function subirAGDrive(data) {
