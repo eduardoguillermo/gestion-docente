@@ -1312,6 +1312,12 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <input type="date" id="rein-fecha-cobro">
       </div>
     </div>
+    <div class="card-row col2" id="rein-monto-cobrado-group" style="display:none">
+      <div class="form-group">
+        <label>Monto cobrado (UYU)</label>
+        <input type="number" id="rein-monto-cobrado" min="0" step="10" placeholder="Igual al gasto si no se completa">
+      </div>
+    </div>
     <div class="form-group"><label>Notas</label><textarea id="rein-notas" placeholder="Observaciones, adjuntos, etc."></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-reintegro')">Cancelar</button>
@@ -1640,8 +1646,9 @@ const TIPOS_REIN = {
 
 function toggleFechaCobro() {
   const estado = document.getElementById('rein-estado').value;
-  const grp = document.getElementById('rein-fecha-cobro-group');
-  grp.style.display = estado === 'cobrado' ? '' : 'none';
+  const show = estado === 'cobrado' ? '' : 'none';
+  document.getElementById('rein-fecha-cobro-group').style.display = show;
+  document.getElementById('rein-monto-cobrado-group').style.display = show;
 }
 
 function openModalReintegro(id) {
@@ -1655,6 +1662,7 @@ function openModalReintegro(id) {
     document.getElementById('rein-comprobante').value = r.comprobante || '';
     document.getElementById('rein-estado').value = r.estado;
     document.getElementById('rein-fecha-cobro').value = r.fechaCobro || '';
+    document.getElementById('rein-monto-cobrado').value = r.montoCobrado != null ? r.montoCobrado : '';
     document.getElementById('rein-notas').value = r.notas || '';
   } else {
     document.getElementById('rein-fecha').value = hoy();
@@ -1664,6 +1672,7 @@ function openModalReintegro(id) {
     document.getElementById('rein-comprobante').value = '';
     document.getElementById('rein-estado').value = 'pendiente';
     document.getElementById('rein-fecha-cobro').value = '';
+    document.getElementById('rein-monto-cobrado').value = '';
     document.getElementById('rein-notas').value = '';
   }
   toggleFechaCobro();
@@ -1681,11 +1690,16 @@ function guardarReintegro() {
     comprobante: document.getElementById('rein-comprobante').value.trim(),
     estado: document.getElementById('rein-estado').value,
     fechaCobro: document.getElementById('rein-fecha-cobro').value || '',
+    montoCobrado: null,
     notas: document.getElementById('rein-notas').value.trim()
   };
   if (!obj.fecha) { toast('Ingresá la fecha del gasto', 'err'); return; }
   if (!obj.concepto) { toast('Ingresá el concepto', 'err'); return; }
   if (!obj.monto) { toast('Ingresá el monto', 'err'); return; }
+  if (obj.estado === 'cobrado') {
+    const mc = document.getElementById('rein-monto-cobrado').value;
+    obj.montoCobrado = mc !== '' ? parseFloat(mc) : obj.monto;
+  }
   const idx = DB.reintegros.findIndex(r=>r.id===id);
   if (idx>=0) DB.reintegros[idx]=obj; else DB.reintegros.push(obj);
   save(); renderReintegros(); toast('Gasto guardado'); closeModal('modal-reintegro');
@@ -1697,7 +1711,8 @@ function marcarCobrado(id) {
   if (!r) return;
   r.estado = 'cobrado';
   r.fechaCobro = r.fechaCobro || hoy();
-  save(); renderReintegros(); toast('Marcado como cobrado ✓');
+  if (r.montoCobrado == null) r.montoCobrado = r.monto;
+  save(); renderReintegros(); toast('Marcado como cobrado ✓ (tocá ✎ si cobraste un monto distinto)');
 }
 
 function delReintegro(id) {
@@ -2293,7 +2308,7 @@ function renderReintegros() {
   // KPIs sobre todos (sin filtro de estado para que sean útiles)
   const base = filtroAnio ? DB.reintegros.filter(r=>r.fecha.startsWith(filtroAnio)) : DB.reintegros;
   const totalGastado  = base.reduce((s,r)=>s+r.monto, 0);
-  const totalCobrado  = base.filter(r=>r.estado==='cobrado').reduce((s,r)=>s+r.monto, 0);
+  const totalCobrado  = base.filter(r=>r.estado==='cobrado').reduce((s,r)=>s+(r.montoCobrado!=null?r.montoCobrado:r.monto), 0);
   const totalPendiente= base.filter(r=>r.estado!=='cobrado').reduce((s,r)=>s+r.monto, 0);
   const cantPendiente = base.filter(r=>r.estado==='pendiente').length;
 
@@ -2320,7 +2335,12 @@ function renderReintegros() {
       <td style="white-space:nowrap">${fmtDate(r.fecha)}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.concepto}</td>
       <td><span class="badge" style="background:${t.color}22;color:${t.color}">${t.label}</span></td>
-      <td style="font-weight:600;color:var(--acc)">${fmtMonto(r.monto)}</td>
+      <td style="font-weight:600;color:var(--acc)">
+        ${fmtMonto(r.monto)}
+        ${r.estado==='cobrado' && r.montoCobrado!=null && r.montoCobrado!==r.monto
+          ? `<div class="text-muted" style="font-size:.8em;font-weight:400">cobrado: ${fmtMonto(r.montoCobrado)}</div>`
+          : ''}
+      </td>
       <td>${badgeEst}</td>
       <td class="text-muted" style="white-space:nowrap">${r.fechaCobro?fmtDate(r.fechaCobro):'—'}</td>
       <td class="text-muted" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.notas||r.comprobante||'—'}</td>
