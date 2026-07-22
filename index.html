@@ -376,7 +376,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.48</div>
+  <div class="splash-version">v1.49</div>
 </div>
 
 <div id="app" style="display:none">
@@ -395,7 +395,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.48</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.49</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -921,6 +921,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         </div>
         <div class="text-muted text-sm mb8">Creá un proyecto en <a href="https://console.cloud.google.com" target="_blank" rel="noopener" style="color:var(--acc)">Google Cloud Console</a>, habilitá la Drive API y creá credenciales OAuth 2.0 (tipo "Aplicación web"). Agregá <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">https://eduardoguillermo.github.io</code> como origen de JavaScript autorizado. Los backups se guardan en una carpeta <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">GestionDocente</code> dentro de tu Drive.</div>
         <button class="btn btn-secondary btn-sm" onclick="conectarGDrive()">🔗 Conectar con Google Drive</button>
+        <button class="btn btn-secondary btn-sm" onclick="abrirRestaurarGDrive()">☁ Restaurar desde Drive</button>
         <span id="gdrive-status" class="text-muted text-sm" style="margin-left:8px"></span>
       </div>
 
@@ -971,6 +972,20 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-bkup')">Cerrar</button>
       <button class="btn btn-success" onclick="hacerBackup(true)">💾 Backup ahora</button>
+    </div>
+  </div>
+</div>
+
+<!-- Backups en Google Drive -->
+<div class="modal-backdrop" id="modal-bkup-gdrive">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-title">Backups en Google Drive
+      <button class="btn-icon" onclick="closeModal('modal-bkup-gdrive')">✕</button>
+    </div>
+    <div class="text-muted text-sm mb16">Carpeta <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">GestionDocente</code> en tu Drive. Elegí un backup para restaurarlo.</div>
+    <div id="bkup-gdrive-lista"><div class="text-muted" style="text-align:center;padding:20px">Cargando...</div></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-bkup-gdrive')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -2697,6 +2712,59 @@ async function subirAGDrive(data) {
     if (res.ok) toast(`☁ Backup en Google Drive (carpeta ${GDRIVE_CARPETA}): ${nombre}`);
     else throw new Error(await res.text());
   } catch(e) { toast('Error Drive: ' + e.message,'err'); descargarBkupArchivo(data); }
+}
+
+async function abrirRestaurarGDrive() {
+  if (!_gdriveToken) { toast('Conectá Google Drive primero','err'); return; }
+  openModal('modal-bkup-gdrive');
+  document.getElementById('bkup-gdrive-lista').innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">Cargando...</div>';
+  try {
+    const folderId = await ensureGDriveFolder();
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+    const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,createdTime,size)`, {
+      headers: { 'Authorization': 'Bearer ' + _gdriveToken }
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    renderBkupGDriveLista(data.files || []);
+  } catch(e) {
+    document.getElementById('bkup-gdrive-lista').innerHTML = `<div class="text-muted" style="text-align:center;padding:20px;color:var(--red)">Error al listar backups: ${e.message}</div>`;
+  }
+}
+
+function renderBkupGDriveLista(files) {
+  const el = document.getElementById('bkup-gdrive-lista');
+  if (!files.length) { el.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">No hay backups en la carpeta todavía</div>'; return; }
+  el.innerHTML = files.map(f => {
+    const fecha = f.createdTime ? fmtDateTime(new Date(f.createdTime).getTime()) : '—';
+    const kb = f.size ? Math.round(f.size/1024) + ' KB' : '';
+    return `
+    <div class="flex" style="justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--brd)">
+      <div>
+        <div style="font-weight:600">${f.name}</div>
+        <div class="text-muted text-sm">${fecha} ${kb ? '· '+kb : ''}</div>
+      </div>
+      <button class="btn btn-success btn-sm" onclick="restaurarDesdeGDrive('${f.id}','${f.name.replace(/'/g,"\\'")}')">↩ Restaurar</button>
+    </div>`;
+  }).join('');
+}
+
+async function restaurarDesdeGDrive(fileId, nombre) {
+  if (!confirm(`¿Restaurar "${nombre}"? Los datos actuales se perderán (se hará un backup automático antes).`)) return;
+  try {
+    const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { 'Authorization': 'Bearer ' + _gdriveToken }
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const d = await resp.json();
+    hacerBackup(false); // guardar estado actual antes de restaurar
+    DB = { ...DB, ...d };
+    save();
+    init();
+    closeModal('modal-bkup-gdrive');
+    closeModal('modal-config');
+    toast('✓ Backup restaurado desde Drive: ' + nombre);
+  } catch(e) { toast('Error al restaurar desde Drive: ' + e.message, 'err'); }
 }
 
 function conectarOneDrive() {
