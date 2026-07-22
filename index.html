@@ -376,7 +376,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.47</div>
+  <div class="splash-version">v1.48</div>
 </div>
 
 <div id="app" style="display:none">
@@ -395,7 +395,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.47</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.48</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -919,7 +919,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
           <label>Client ID de Google</label>
           <input id="cfg-gdrive-client-id" placeholder="xxxxxx.apps.googleusercontent.com" style="margin-top:4px">
         </div>
-        <div class="text-muted text-sm mb8">Creá un proyecto en <a href="https://console.cloud.google.com" target="_blank" rel="noopener" style="color:var(--acc)">Google Cloud Console</a>, habilitá la Drive API y creá credenciales OAuth 2.0 (tipo "Aplicación web"). Agregá <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">https://eduardoguillermo.github.io</code> como origen de JavaScript autorizado.</div>
+        <div class="text-muted text-sm mb8">Creá un proyecto en <a href="https://console.cloud.google.com" target="_blank" rel="noopener" style="color:var(--acc)">Google Cloud Console</a>, habilitá la Drive API y creá credenciales OAuth 2.0 (tipo "Aplicación web"). Agregá <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">https://eduardoguillermo.github.io</code> como origen de JavaScript autorizado. Los backups se guardan en una carpeta <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">GestionDocente</code> dentro de tu Drive.</div>
         <button class="btn btn-secondary btn-sm" onclick="conectarGDrive()">🔗 Conectar con Google Drive</button>
         <span id="gdrive-status" class="text-muted text-sm" style="margin-left:8px"></span>
       </div>
@@ -2471,7 +2471,9 @@ let _carpetaHandle = null;
 let _gdriveToken = null;
 let _onedriveToken = null;
 let _gdriveTokenClient = null;
+let _gdriveFolderId = null;
 const GDRIVE_TOKEN_KEY = 'docente_gdrive_token';
+const GDRIVE_CARPETA = 'GestionDocente';
 
 function guardarTokenGDrive(token, expiresInSeg) {
   const vencimiento = Date.now() + (expiresInSeg * 1000) - 60000; // 1 min de margen
@@ -2656,18 +2658,43 @@ function conectarGDrive() {
   _gdriveTokenClient.requestAccessToken();
 }
 
+let _gdriveFolderPromise = null;
+async function ensureGDriveFolder() {
+  if (_gdriveFolderId) return _gdriveFolderId;
+  if (_gdriveFolderPromise) return _gdriveFolderPromise; // evita crear la carpeta 2 veces en paralelo
+  _gdriveFolderPromise = (async () => {
+    const q = encodeURIComponent(`name='${GDRIVE_CARPETA}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+      headers: { 'Authorization': 'Bearer ' + _gdriveToken }
+    });
+    const data = await resp.json();
+    if (data.files && data.files.length) { _gdriveFolderId = data.files[0].id; return _gdriveFolderId; }
+
+    const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + _gdriveToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: GDRIVE_CARPETA, mimeType: 'application/vnd.google-apps.folder' })
+    });
+    const created = await createResp.json();
+    _gdriveFolderId = created.id;
+    return _gdriveFolderId;
+  })();
+  try { return await _gdriveFolderPromise; } finally { _gdriveFolderPromise = null; }
+}
+
 async function subirAGDrive(data) {
   if (!_gdriveToken) { toast('Conectá Google Drive primero','err'); return; }
   const nombre = `docente_bkup_${bkupTimestamp()}.json`;
-  const meta = JSON.stringify({ name: nombre, mimeType: 'application/json' });
-  const form = new FormData();
-  form.append('metadata', new Blob([meta], { type: 'application/json' }));
-  form.append('file', new Blob([data], { type: 'application/json' }));
   try {
+    const folderId = await ensureGDriveFolder();
+    const meta = JSON.stringify({ name: nombre, mimeType: 'application/json', parents: [folderId] });
+    const form = new FormData();
+    form.append('metadata', new Blob([meta], { type: 'application/json' }));
+    form.append('file', new Blob([data], { type: 'application/json' }));
     const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + _gdriveToken }, body: form
     });
-    if (res.ok) toast(`☁ Backup en Google Drive: ${nombre}`);
+    if (res.ok) toast(`☁ Backup en Google Drive (carpeta ${GDRIVE_CARPETA}): ${nombre}`);
     else throw new Error(await res.text());
   } catch(e) { toast('Error Drive: ' + e.message,'err'); descargarBkupArchivo(data); }
 }
