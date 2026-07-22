@@ -375,7 +375,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.45</div>
+  <div class="splash-version">v1.46</div>
 </div>
 
 <div id="app" style="display:none">
@@ -394,7 +394,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.45</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.46</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -701,6 +701,21 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         </div>
 
         <div id="contador-ciclos"></div>
+      </div>
+
+      <!-- Pagos del reintegro por días -->
+      <div class="card mb16">
+        <div class="section-header mb16" style="margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:0">Pagos recibidos — reintegro por días</div>
+          <button class="btn btn-primary btn-sm" onclick="openModalPagoDias()">+ Registrar pago</button>
+        </div>
+        <div class="card-row col2 mb16" id="pagodias-kpis"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Fecha de pago</th><th>Monto</th><th>Notas</th><th></th></tr></thead>
+            <tbody id="pagodias-tbody"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card">
@@ -1326,6 +1341,25 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   </div>
 </div>
 
+<!-- Pago reintegro por días -->
+<div class="modal-backdrop" id="modal-pagodias">
+  <div class="modal">
+    <div class="modal-title">Registrar pago de reintegro
+      <button class="btn-icon" onclick="closeModal('modal-pagodias')">✕</button>
+    </div>
+    <input type="hidden" id="pd-id">
+    <div class="card-row col2">
+      <div class="form-group"><label>Fecha de pago</label><input type="date" id="pd-fecha"></div>
+      <div class="form-group"><label>Monto (UYU)</label><input type="number" id="pd-monto" min="0" step="100" placeholder="0"></div>
+    </div>
+    <div class="form-group"><label>Notas</label><textarea id="pd-notas" placeholder="Ej: cobro parcial ciclo julio..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-pagodias')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPagoDias()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Asistencia -->
 <div class="modal-backdrop" id="modal-asistencia">
   <div class="modal" style="max-width:440px">
@@ -1579,6 +1613,7 @@ let DB = {
   feriados: [],
   actividades: [],
   reintegros: [],
+  pagosReintegroDias: [],
   bibliotecaModulos: [],
   descuentos: [],
   asistencias: []
@@ -1719,6 +1754,77 @@ function delReintegro(id) {
   if (!confirm('¿Eliminar este gasto?')) return;
   DB.reintegros = DB.reintegros.filter(r=>r.id!==id);
   save(); renderReintegros(); toast('Gasto eliminado');
+}
+
+function openModalPagoDias(id) {
+  document.getElementById('pd-id').value = id || '';
+  if (id) {
+    const p = DB.pagosReintegroDias.find(x=>x.id===id);
+    document.getElementById('pd-fecha').value = p.fecha;
+    document.getElementById('pd-monto').value = p.monto;
+    document.getElementById('pd-notas').value = p.notas || '';
+  } else {
+    document.getElementById('pd-fecha').value = hoy();
+    document.getElementById('pd-monto').value = '';
+    document.getElementById('pd-notas').value = '';
+  }
+  openModal('modal-pagodias');
+}
+
+function guardarPagoDias() {
+  const id = document.getElementById('pd-id').value || uid();
+  const obj = {
+    id,
+    fecha: document.getElementById('pd-fecha').value,
+    monto: parseFloat(document.getElementById('pd-monto').value) || 0,
+    notas: document.getElementById('pd-notas').value.trim()
+  };
+  if (!obj.fecha) { toast('Ingresá la fecha de pago', 'err'); return; }
+  if (!obj.monto) { toast('Ingresá el monto', 'err'); return; }
+  const idx = DB.pagosReintegroDias.findIndex(p=>p.id===id);
+  if (idx>=0) DB.pagosReintegroDias[idx]=obj; else DB.pagosReintegroDias.push(obj);
+  save(); renderPagosDias(); toast('Pago registrado'); closeModal('modal-pagodias');
+  document.getElementById('pd-id').value = '';
+}
+
+function delPagoDias(id) {
+  if (!confirm('¿Eliminar este pago?')) return;
+  DB.pagosReintegroDias = DB.pagosReintegroDias.filter(p=>p.id!==id);
+  save(); renderPagosDias(); toast('Pago eliminado');
+}
+
+function renderPagosDias() {
+  const pagos = [...DB.pagosReintegroDias].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const totalCobrado = pagos.reduce((s,p)=>s+p.monto, 0);
+  const totalCalculado = getCiclos21_20().reduce((s,c)=>{
+    const dias = diasConClaseDada(c.ini, c.fin);
+    return s + dias.length * getImporteDia();
+  }, 0);
+  const diff = totalCalculado - totalCobrado;
+
+  document.getElementById('pagodias-kpis').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Total cobrado</div><div class="kpi-val grn">${fmtMonto(totalCobrado)}</div><div class="kpi-sub">${pagos.length} pagos registrados</div></div>
+    <div class="kpi"><div class="kpi-label">Saldo vs. últimos 3 ciclos calculados</div><div class="kpi-val ${diff>0?'red':'grn'}">${diff>0?'− '+fmtMonto(diff):'Al día'}</div><div class="kpi-sub">Referencia, no exacta si cobrás fuera de ese rango</div></div>
+  `;
+
+  const tb = document.getElementById('pagodias-tbody');
+  if (!pagos.length) {
+    tb.innerHTML = `<tr><td colspan="4" class="text-muted" style="text-align:center;padding:20px">Sin pagos registrados</td></tr>`;
+    return;
+  }
+  tb.innerHTML = pagos.map(p => `
+    <tr>
+      <td style="white-space:nowrap">${fmtDate(p.fecha)}</td>
+      <td style="font-weight:600;color:var(--acc)">${fmtMonto(p.monto)}</td>
+      <td class="text-muted" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.notas||'—'}</td>
+      <td>
+        <div class="flex gap8">
+          <button class="btn-icon" onclick="openModalPagoDias('${p.id}')">✎</button>
+          <button class="btn-icon" style="color:var(--red)" onclick="delPagoDias('${p.id}')">✕</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
 }
 
 function ejecutarSalidaRapida() {
@@ -2780,7 +2886,7 @@ function goTab(name) {
   if (name==='liquidacion') renderLiquidacion();
   if (name==='actividades') renderActividades();
   if (name==='reporte') renderReporte();
-  if (name==='reintegros') renderReintegros();
+  if (name==='reintegros') { renderReintegros(); renderPagosDias(); }
   if (name==='asistencia') renderAsistencia();
   if (name==='feriados') renderFeriados();
 }
