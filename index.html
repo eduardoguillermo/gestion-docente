@@ -376,7 +376,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.49</div>
+  <div class="splash-version">v1.50</div>
 </div>
 
 <div id="app" style="display:none">
@@ -395,7 +395,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.49</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.50</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -986,6 +986,31 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div id="bkup-gdrive-lista"><div class="text-muted" style="text-align:center;padding:20px">Cargando...</div></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-bkup-gdrive')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clasificar red WiFi -->
+<div class="modal-backdrop" id="modal-red-clasificar">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">Clasificar red WiFi
+      <button class="btn-icon" onclick="cerrarModalRed(null)">✕</button>
+    </div>
+    <div class="text-muted text-sm mb16" id="red-clasificar-info"></div>
+    <div class="form-group">
+      <label>Nombre (opcional)</label>
+      <input id="red-clasificar-nombre" placeholder="Ej: Aula 3, Sala de profesores...">
+    </div>
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="red-clasificar-tipo">
+        <option value="trabajo">🏢 Red del trabajo</option>
+        <option value="otra">🏠 Otra red</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModalRed(null)">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarClasificacionRed()">Guardar</button>
     </div>
   </div>
 </div>
@@ -1959,24 +1984,55 @@ async function detectarRedActual() {
   return { ipLocal, rango };
 }
 
+function _redInfo(clave) {
+  const v = (DB.config.redesConocidas || {})[clave];
+  if (!v) return null;
+  if (typeof v === 'string') return { tipo: v, nombre: '' }; // compat con datos viejos (string simple)
+  return v;
+}
+
+let _redClasificarResolve = null;
+let _redClasificarClave = null;
+
+function preguntarClasificarRed(rango, ipLocal, nombreActual, tipoActual) {
+  return new Promise(resolve => {
+    _redClasificarResolve = resolve;
+    _redClasificarClave = rango;
+    document.getElementById('red-clasificar-info').innerHTML = ipLocal
+      ? `Red detectada: <b>${rango}</b> (IP local: ${ipLocal})`
+      : `Red memorizada: <b>${rango}</b>`;
+    document.getElementById('red-clasificar-nombre').value = nombreActual || '';
+    document.getElementById('red-clasificar-tipo').value = tipoActual || 'trabajo';
+    openModal('modal-red-clasificar');
+  });
+}
+
+function cerrarModalRed(resultado) {
+  closeModal('modal-red-clasificar');
+  if (_redClasificarResolve) { const r = _redClasificarResolve; _redClasificarResolve = null; r(resultado); }
+}
+
+function guardarClasificacionRed() {
+  const tipo = document.getElementById('red-clasificar-tipo').value;
+  const nombre = document.getElementById('red-clasificar-nombre').value.trim();
+  const rango = _redClasificarClave;
+  const redes = DB.config.redesConocidas || {};
+  redes[rango] = { tipo, nombre };
+  DB.config.redesConocidas = redes;
+  save();
+  renderRedesLista();
+  cerrarModalRed(tipo === 'trabajo');
+}
+
 async function verificarRedTrabajo() {
   if (!DB.config.redWifi) return false;
   const { ipLocal, rango } = await detectarRedActual();
   if (!rango) return false;
-  const redes = DB.config.redesConocidas || {};
-  if (redes[rango] !== undefined) {
-    return redes[rango] === 'trabajo';
-  }
-  // Red nueva → preguntar al usuario
-  const esTrab = confirm(`Red nueva detectada.
-IP local: ${ipLocal} (rango ${rango})
-
-¿Es la red del trabajo?`);
-  const nombre = esTrab ? 'trabajo' : 'otra';
-  DB.config.redesConocidas = { ...redes, [rango]: nombre };
-  save();
-  renderRedesLista();
-  return esTrab;
+  const info = _redInfo(rango);
+  if (info) return info.tipo === 'trabajo';
+  // Red nueva → preguntar al usuario con modal (no bloqueante)
+  const esTrab = await preguntarClasificarRed(rango, ipLocal);
+  return !!esTrab;
 }
 
 function renderRedesLista() {
@@ -1989,24 +2045,21 @@ function renderRedesLista() {
     return;
   }
   el.innerHTML = claves.map(clave => {
-    const nombre = redes[clave];
-    const esTrab = nombre === 'trabajo';
+    const info = _redInfo(clave);
+    const esTrab = info.tipo === 'trabajo';
     return `<div class="flex-center gap8 mb8" style="background:var(--bg3);padding:8px 10px;border-radius:var(--radius);border:1px solid var(--brd)">
       <span style="font-size:13px;font-family:monospace;color:var(--txt2)">${clave}</span>
+      ${info.nombre ? `<span style="font-size:12px;color:var(--txt)">${info.nombre}</span>` : ''}
       <span class="badge ${esTrab ? 'badge-grn' : 'badge-muted'}" style="margin-left:4px">${esTrab ? '🏢 trabajo' : '🏠 otra'}</span>
-      <button class="btn-icon" style="margin-left:auto;font-size:12px" title="Cambiar clasificación" onclick="reclasificarRed('${clave}')">${esTrab ? '→ otra' : '→ trabajo'}</button>
+      <button class="btn-icon" style="margin-left:auto;font-size:12px" title="Editar nombre / tipo" onclick="editarRed('${clave}')">✎</button>
       <button class="btn-icon" style="color:var(--red);font-size:12px" title="Olvidar red" onclick="olvidarRed('${clave}')">✕</button>
     </div>`;
   }).join('');
 }
 
-function reclasificarRed(clave) {
-  const redes = DB.config.redesConocidas || {};
-  redes[clave] = redes[clave] === 'trabajo' ? 'otra' : 'trabajo';
-  DB.config.redesConocidas = redes;
-  save();
-  renderRedesLista();
-  toast('Red reclasificada');
+async function editarRed(clave) {
+  const info = _redInfo(clave) || { tipo: 'otra', nombre: '' };
+  await preguntarClasificarRed(clave, null, info.nombre, info.tipo);
 }
 
 function olvidarRed(clave) {
@@ -2043,20 +2096,16 @@ async function detectarRedAhora() {
     statusEl.textContent = '⚠ No se pudo detectar la IP local (WebRTC bloqueado).';
     return;
   }
-  const redes = DB.config.redesConocidas || {};
-  if (redes[rango] !== undefined) {
-    statusEl.textContent = `✓ Red actual: ${rango} → clasificada como "${redes[rango]}"`;
+  const info = _redInfo(rango);
+  if (info) {
+    statusEl.textContent = `✓ Red actual: ${rango}${info.nombre ? ' — '+info.nombre : ''} → clasificada como "${info.tipo}"`;
   } else {
-    statusEl.textContent = `Red nueva: ${rango} (IP: ${ipLocal}) — no memorizada aún.`;
-    const esTrab = confirm(`Red detectada: ${rango}
-IP local: ${ipLocal}
-
-¿Es la red del trabajo?`);
-    redes[rango] = esTrab ? 'trabajo' : 'otra';
-    DB.config.redesConocidas = redes;
-    save();
-    renderRedesLista();
-    statusEl.textContent = `✓ Guardada como "${redes[rango]}"`;
+    statusEl.textContent = `Red nueva: ${rango} (IP: ${ipLocal}) — sin clasificar.`;
+    await preguntarClasificarRed(rango, ipLocal);
+    const nuevaInfo = _redInfo(rango);
+    statusEl.textContent = nuevaInfo
+      ? `✓ Guardada como "${nuevaInfo.tipo}"${nuevaInfo.nombre ? ' — '+nuevaInfo.nombre : ''}`
+      : 'Sin clasificar (cancelado).';
   }
 }
 
