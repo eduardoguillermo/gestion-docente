@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión Docente · Manual de Usuario</title>
+<style>
+  :root {
+    --primary: #4f9ef8;
+    --primary-light: #eef6ff;
+    --green: #10b981;
+    --green-light: #ecfdf5;
+    --amber: #f59e0b;
+    --amber-light: #fffbeb;
+    --red: #ef4444;
+    --red-light: #fef2f2;
+    --teal: #0f766e;
+    --teal-light: #f0fdfa;
+    --blue: #0284c7;
+    --blue-light: #f0f9ff;
+    --purple: #a855f7;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --sidebar-w: 260px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; }
+
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: var(--sidebar-w);
+    background: #1e293b;
+    color: #cbd5e1;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 0 0 32px 0;
+    z-index: 100;
+  }
+  .sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid #334155; margin-bottom: 8px; }
+  .sidebar-logo h1 { font-size: 16px; font-weight: 700; color: white; }
+  .sidebar-logo p { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .sidebar a {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 20px;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 13px;
+    border-left: 3px solid transparent;
+    transition: all .15s;
+  }
+  .sidebar a:hover, .sidebar a.active {
+    color: white;
+    background: #0f172a;
+    border-left-color: var(--primary);
+  }
+  .sidebar .section-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: #475569; padding: 16px 20px 4px;
+  }
+  .content { margin-left: var(--sidebar-w); flex: 1; max-width: 860px; padding: 40px 48px 80px; }
+
+  .section { margin-bottom: 64px; scroll-margin-top: 24px; }
+  .section-header { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid var(--border); padding-bottom: 12px; margin-bottom: 24px; }
+  .section-icon { font-size: 28px; }
+  .section-title { font-size: 22px; font-weight: 700; color: var(--text); }
+  .section-subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  h2 { font-size: 17px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+  h3 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; color: var(--text); }
+  p { margin-bottom: 10px; color: #374151; }
+  ul, ol { padding-left: 22px; margin-bottom: 12px; }
+  li { margin-bottom: 5px; color: #374151; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 14px; }
+  .card-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: #4b5563; }
+
+  .note { background: var(--amber-light); border-left: 4px solid var(--amber); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; font-size: 13px; color: #78350f; }
+  .tip { background: var(--green-light); border-left: 4px solid var(--green); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; font-size: 13px; color: #065f46; }
+  .warning { background: var(--red-light); border-left: 4px solid var(--red); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; font-size: 13px; color: #7f1d1d; }
+  .info { background: var(--blue-light); border-left: 4px solid var(--blue); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; font-size: 13px; color: #0c4a6e; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+  th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-weight: 600; border: 1px solid var(--border); }
+  td { padding: 8px 12px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) { background: #f8fafc; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-blue  { background: #dbeafe; color: #1e40af; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .badge-red   { background: #fee2e2; color: #991b1b; }
+  .badge-purple{ background: #f3e8ff; color: #6b21a8; }
+
+  code { background: #f1f5f9; border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'Courier New', monospace; font-size: 12px; color: #1e293b; }
+
+  .steps { counter-reset: step; }
+  .step { display: flex; gap: 14px; margin-bottom: 14px; align-items: flex-start; }
+  .step-num { counter-increment: step; min-width: 28px; height: 28px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .step-body { padding-top: 4px; font-size: 14px; }
+
+  .hero { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 40px 48px; margin: -40px -48px 48px; }
+  .hero h1 { font-size: 28px; font-weight: 800; }
+  .hero p { color: #94a3b8; margin-top: 6px; font-size: 15px; }
+  .hero-badges { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  .changelog-entry { border-left: 3px solid var(--primary); padding: 4px 0 4px 16px; margin-bottom: 28px; }
+  .changelog-version { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .changelog-version .v-num { font-size: 16px; font-weight: 700; color: var(--text); }
+  .changelog-list { margin: 0; padding-left: 20px; font-size: 13.5px; color: #4b5563; line-height: 1.7; }
+  .changelog-list li { margin-bottom: 3px; }
+  .changelog-tag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 4px; }
+  .tag-feature { background: #dbeafe; color: #1e40af; }
+  .tag-fix { background: #fee2e2; color: #991b1b; }
+  .tag-infra { background: #f3e8ff; color: #6b21a8; }
+  .tag-docs { background: #fef3c7; color: #92400e; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .content { margin-left: 0; padding: 20px 16px; }
+    .hero { margin: -20px -16px 32px; padding: 24px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🎓 Gestión Docente</h1>
+    <p>Manual de usuario · v1.52</p>
+  </div>
+
+  <div class="section-label">Introducción</div>
+  <a href="#intro">🏠 ¿Qué es esta app?</a>
+  <a href="#navegacion">🗂 Navegación</a>
+  <a href="#backup">💾 Backup y datos</a>
+
+  <div class="section-label">Secciones principales</div>
+  <a href="#dashboard">📊 Dashboard</a>
+  <a href="#calendario">📅 Calendario</a>
+  <a href="#materias">📚 Materias</a>
+  <a href="#clases">✏ Clases</a>
+  <a href="#horas">⏱ Horas</a>
+  <a href="#liquidacion">💰 Liquidación</a>
+  <a href="#actividades">🤝 Actividades no remuneradas</a>
+  <a href="#reporte">📋 Reporte de horas</a>
+  <a href="#reintegros">⛽ Reintegros</a>
+  <a href="#asistencia">🏛 Tiempo en la institución</a>
+  <a href="#feriados">🇺🇾 Feriados</a>
+
+  <div class="section-label">Configuración</div>
+  <a href="#configuracion">⚙ Configuración general</a>
+  <a href="#drive">☁️ Google Drive</a>
+  <a href="#wifi">📶 Detección por red WiFi</a>
+
+  <div class="section-label">Historial</div>
+  <a href="#changelog">🧾 Historial de cambios</a>
+</nav>
+
+<main class="content">
+
+  <div class="hero">
+    <h1>🎓 Gestión Docente</h1>
+    <p>Manual completo de usuario — Gestión de actividad docente, horas, liquidación y asistencia</p>
+    <div class="hero-badges">
+      <span class="badge badge-green">✓ v1.52</span>
+      <span class="badge badge-blue">✓ Sin servidor</span>
+      <span class="badge badge-amber">✓ Datos locales</span>
+      <span class="badge badge-purple">✓ Backup en Drive / OneDrive</span>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <section class="section" id="intro">
+    <div class="section-header">
+      <span class="section-icon">🏠</span>
+      <div>
+        <div class="section-title">¿Qué es Gestión Docente?</div>
+        <div class="section-subtitle">Descripción general de la aplicación</div>
+      </div>
+    </div>
+    <p>Gestión Docente es una aplicación web progresiva (PWA) para llevar el control completo de tu actividad como docente: materias, horarios, clases dadas, horas devengadas vs. percibidas, actividades no remuneradas, gastos a reintegrar y asistencia a la institución.</p>
+    <p>Funciona directamente en el navegador, sin servidor ni cuenta obligatoria: todos los datos se guardan en el dispositivo (localStorage) y opcionalmente se respaldan en Google Drive, OneDrive o una carpeta local.</p>
+    <p>Permite llevar control de:</p>
+    <ul>
+      <li>Materias dictadas, con tipos de hora y su valor</li>
+      <li>Clases individuales (planificadas y dadas), con importación desde Google Calendar</li>
+      <li>Horas previstas vs. horas dadas</li>
+      <li>Devengado (lo que corresponde cobrar) vs. percibido (lo efectivamente cobrado)</li>
+      <li>Actividades no remuneradas (reuniones, capacitaciones, extensión, investigación)</li>
+      <li>Gastos a reintegrar (combustible, transporte, etc.) y reintegro por días trabajados</li>
+      <li>Asistencia automática a la institución por GPS o red WiFi</li>
+      <li>Feriados de Uruguay, nacionales y propios de la institución</li>
+    </ul>
+    <div class="tip">💡 La app funciona offline. Una vez instalada como PWA, no necesita internet para operar (excepto para sincronizar con Drive/OneDrive o importar feriados/calendario).</div>
+  </section>
+
+  <!-- NAVEGACIÓN -->
+  <section class="section" id="navegacion">
+    <div class="section-header">
+      <span class="section-icon">🗂</span>
+      <div>
+        <div class="section-title">Navegación</div>
+        <div class="section-subtitle">Cómo moverte por la app</div>
+      </div>
+    </div>
+    <p>En escritorio, la navegación entre secciones está en la barra superior. En celular, aparece una barra inferior con los accesos principales y un botón de menú (☰) que abre un panel lateral (drawer) con el resto de las secciones.</p>
+    <p>Cada sección tiene, junto a su título, un botón amarillo <b>?</b> que abre este manual directamente en el apartado correspondiente.</p>
+    <div class="tip">💡 Podés instalar la app en tu celular o PC como si fuera nativa: buscá la opción "Instalar app" en el menú del navegador.</div>
+  </section>
+
+  <!-- BACKUP -->
+  <section class="section" id="backup">
+    <div class="section-header">
+      <span class="section-icon">💾</span>
+      <div>
+        <div class="section-title">Backup y datos</div>
+        <div class="section-subtitle">Cómo se guarda y protege tu información</div>
+      </div>
+    </div>
+    <p>Todos los datos viven en el dispositivo (localStorage). Para no perder información, la app tiene varias capas de seguridad:</p>
+    <div class="steps">
+      <div class="step"><div class="step-num"></div><div class="step-body"><b>Snapshots automáticos:</b> se guardan hasta 10 backups locales, tomados al cerrar la pestaña (<code>beforeunload</code>) y al cambiar de pestaña/minimizar (<code>visibilitychange</code>).</div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body"><b>Botón 🚪 Salir:</b> hace un backup manual antes de cerrar, con confirmación.</div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body"><b>Historial de backups:</b> en Configuración → "📋 Ver historial" podés restaurar cualquiera de los últimos 10 backups automáticos.</div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body"><b>Destino externo configurable:</b> además del historial local, podés elegir que cada backup también se guarde en Google Drive, OneDrive, se descargue como archivo, o se guarde en una carpeta local del dispositivo (Chrome/Edge desktop).</div></div>
+    </div>
+    <div class="warning">⚠️ Si tu navegador borra datos al salir (por ejemplo, "Borrar datos de navegación al salir" activado en Brave), vas a perder el localStorage. Desactivá esa opción para este sitio, o usá un destino de backup externo (Drive/OneDrive/carpeta) como red de seguridad.</div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section class="section" id="dashboard">
+    <div class="section-header">
+      <span class="section-icon">📊</span>
+      <div>
+        <div class="section-title">Dashboard</div>
+        <div class="section-subtitle">Resumen general de tu actividad</div>
+      </div>
+    </div>
+    <p>Primera pantalla al entrar. Muestra de un vistazo:</p>
+    <table>
+      <tr><th>Indicador</th><th>Qué muestra</th></tr>
+      <tr><td>Horas previstas</td><td>Total de horas planificadas según tus materias</td></tr>
+      <tr><td>Horas dadas</td><td>Horas de clases ya confirmadas como dadas</td></tr>
+      <tr><td>Horas devengadas</td><td>Lo que corresponde cobrar según las clases dadas</td></tr>
+      <tr><td>Saldo</td><td>Devengado − percibido (cuánto te deben o si estás al día)</td></tr>
+      <tr><td>Hs no remuneradas</td><td>Horas de reuniones, capacitaciones, etc. (no generan cobro)</td></tr>
+      <tr><td>Próxima actividad</td><td>Siguiente actividad no remunerada agendada</td></tr>
+    </table>
+    <p>Además incluye tres bloques: <b>Próximas clases (7 días)</b>, <b>Cumplimiento por materia</b> (progreso de horas dadas vs. previstas) y <b>Resumen financiero</b>.</p>
+    <p>El botón <b>⬇ Excel</b> exporta los datos del dashboard a una planilla.</p>
+  </section>
+
+  <!-- CALENDARIO -->
+  <section class="section" id="calendario">
+    <div class="section-header">
+      <span class="section-icon">📅</span>
+      <div>
+        <div class="section-title">Calendario</div>
+        <div class="section-subtitle">Vista mensual de clases y actividades</div>
+      </div>
+    </div>
+    <p>Vista mensual con todas tus clases y actividades, coloreadas según la materia. Usá <code>◀ ▶</code> para moverte entre meses.</p>
+    <p>Tocá un día para ver el detalle y marcar clases como <b>dadas</b> directamente desde ahí, sin ir a la pestaña Clases.</p>
+  </section>
+
+  <!-- MATERIAS -->
+  <section class="section" id="materias">
+    <div class="section-header">
+      <span class="section-icon">📚</span>
+      <div>
+        <div class="section-title">Materias</div>
+        <div class="section-subtitle">Maestro de materias, tipos de hora y valores</div>
+      </div>
+    </div>
+    <p>Cada materia que dictás se carga acá, con:</p>
+    <ul>
+      <li><b>Tipos de hora</b> con su valor por hora (ej: Teórica 800/h, Práctica 650/h, Tutoría 500/h) — necesarios para calcular el devengado</li>
+      <li><b>Color</b> identificador, usado en el calendario y en los gráficos del dashboard</li>
+    </ul>
+    <div class="note">📌 Una materia necesita al menos un tipo de hora cargado para poder guardarse — sin eso, la app no calcula devengado para esa materia.</div>
+  </section>
+
+  <!-- CLASES -->
+  <section class="section" id="clases">
+    <div class="section-header">
+      <span class="section-icon">✏</span>
+      <div>
+        <div class="section-title">Clases</div>
+        <div class="section-subtitle">Registro individual de cada clase</div>
+      </div>
+    </div>
+    <p>Cada clase se carga con fecha, materia, horario (las horas se calculan automáticamente), tipo de hora y tema/contenido.</p>
+    <p><b>Estados:</b></p>
+    <ul>
+      <li><span class="badge badge-blue">Planificada</span> — clase futura, todavía no ocurrió</li>
+      <li><span class="badge badge-green">Dada ✓</span> — ya ocurrió, genera devengado</li>
+    </ul>
+    <h3>Importar desde Google Calendar</h3>
+    <div class="steps">
+      <div class="step"><div class="step-num"></div><div class="step-body">Abrí calendar.google.com, en el calendario deseado tocá los tres puntos ⋮ → "Configuración y uso compartido"</div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body">Bajá hasta "Exportar e importar" → Exportar → descarga el archivo <code>.ics</code></div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body">En Clases → "📅 Importar desde Google Calendar", subí el archivo</div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body">Asignale una materia a cada título único detectado, revisá la previsualización y confirmá</div></div>
+    </div>
+    <div class="tip">💡 Para que el mapeo sea automático la próxima vez, conviene que el título del evento en Google Calendar incluya el nombre de la materia tal como la cargaste en la app.</div>
+    <p>Marcar una clase como dada se puede hacer desde acá, desde el Calendario o desde el Dashboard.</p>
+  </section>
+
+  <!-- HORAS -->
+  <section class="section" id="horas">
+    <div class="section-header">
+      <span class="section-icon">⏱</span>
+      <div>
+        <div class="section-title">Horas</div>
+        <div class="section-subtitle">Previstas vs. dadas, por materia y tipo</div>
+      </div>
+    </div>
+    <p>Detalle filtrable por materia y tipo de hora de cuántas horas tenías previstas contra cuántas diste realmente. Sirve para ver de un vistazo si vas al día con la planificación de cada materia.</p>
+  </section>
+
+  <!-- LIQUIDACIÓN -->
+  <section class="section" id="liquidacion">
+    <div class="section-header">
+      <span class="section-icon">💰</span>
+      <div>
+        <div class="section-title">Liquidación</div>
+        <div class="section-subtitle">Devengado vs. percibido</div>
+      </div>
+    </div>
+    <p>Compara lo <b>devengado</b> (lo que corresponde cobrar según las clases dadas) contra lo <b>percibido</b> (lo que efectivamente cobraste).</p>
+    <p><b>+ Registrar pago</b> carga un cobro con fecha, monto y tipo:</p>
+    <table>
+      <tr><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>Mensual</td><td>Pago regular del mes</td></tr>
+      <tr><td>Parcial</td><td>Un adelanto o pago incompleto</td></tr>
+      <tr><td>Pago final</td><td>Cierre de una liquidación</td></tr>
+      <tr><td>Adelanto</td><td>Cobro anticipado</td></tr>
+      <tr><td>Liquidación</td><td>Pago formal de liquidación</td></tr>
+    </table>
+    <p>El saldo pendiente (devengado − percibido) se recalcula solo con cada pago cargado.</p>
+  </section>
+
+  <!-- ACTIVIDADES -->
+  <section class="section" id="actividades">
+    <div class="section-header">
+      <span class="section-icon">🤝</span>
+      <div>
+        <div class="section-title">Actividades no remuneradas</div>
+        <div class="section-subtitle">Reuniones, capacitaciones, extensión, investigación</div>
+      </div>
+    </div>
+    <p>Registrá acá cualquier tarea docente que no se cobra por hora: reuniones, capacitaciones, extensión, investigación.</p>
+    <div class="note">📌 Aparecen en el calendario y en el reporte, pero <b>no generan devengado</b> — sirven solo para tener registro de tu carga real de trabajo.</div>
+  </section>
+
+  <!-- REPORTE -->
+  <section class="section" id="reporte">
+    <div class="section-header">
+      <span class="section-icon">📋</span>
+      <div>
+        <div class="section-title">Reporte de horas</div>
+        <div class="section-subtitle">Consolidado anual</div>
+      </div>
+    </div>
+    <p>Reporte anual consolidado de horas dadas, devengado y detalle por materia. Elegí el año desde el selector.</p>
+    <p>El botón <b>⬇ Excel</b> exporta el reporte completo del año seleccionado.</p>
+  </section>
+
+  <!-- REINTEGROS -->
+  <section class="section" id="reintegros">
+    <div class="section-header">
+      <span class="section-icon">⛽</span>
+      <div>
+        <div class="section-title">Reintegros</div>
+        <div class="section-subtitle">Gastos, días trabajados y pagos recibidos</div>
+      </div>
+    </div>
+    <p>Esta sección tiene <b>tres partes independientes</b>:</p>
+
+    <h3>1. Gastos a reintegrar</h3>
+    <p>Comprobantes puntuales (combustible, transporte/peaje, materiales, impresión, comunicación, alimentación, otro) con:</p>
+    <ul>
+      <li>Fecha, tipo, concepto, monto, número de comprobante</li>
+      <li>Estado: <span class="badge badge-red">Pendiente</span> <span class="badge badge-amber">En trámite</span> <span class="badge badge-green">Cobrado ✓</span></li>
+      <li>Cuando el estado es "Cobrado", se puede indicar el <b>monto realmente cobrado</b> (por si difiere del gasto original) y la fecha de cobro</li>
+    </ul>
+    <p>El botón ✓ en la lista marca como cobrado al instante (monto cobrado = monto del gasto por defecto; editable después con ✎).</p>
+    <p>Los KPIs de arriba muestran: total gastado, total cobrado, total pendiente y balance a tu favor.</p>
+
+    <h3>2. Días con clase — ciclos 21 al 20</h3>
+    <p>Calcula automáticamente cuántos <b>días</b> diste clase (contando <b>una sola vez</b> aunque hayas dado varias clases ese mismo día), agrupados en ciclos de facturación que van del <b>21 de un mes al 20 del mes siguiente</b> — no el mes calendario.</p>
+    <p>Configurás un <b>importe por día</b> (manual, en Configurar importe), y la app calcula:</p>
+    <p style="text-align:center;font-weight:700;font-size:15px;margin:12px 0">Total del ciclo = días con clase dada × importe por día</p>
+    <p>Se muestran los últimos 3 ciclos, cada uno con el detalle de qué días diste clase y en qué materias. Solo cuentan las clases con estado <b>Dada ✓</b> (no planificadas ni canceladas).</p>
+
+    <h3>3. Pagos recibidos — reintegro por días</h3>
+    <p>Acá registrás cuándo y cuánto cobraste del reintegro por días calculado arriba. No está atado a un ciclo específico (podés cobrar en partes, en cualquier momento) — solo fecha, monto y notas.</p>
+    <p>El KPI "Saldo vs. últimos 3 ciclos calculados" es una referencia orientativa: compara el total cobrado registrado contra lo calculado en los ciclos visibles, pero no es una conciliación exacta si cobrás fuera de ese rango.</p>
+    <div class="tip">💡 Podés cargar varios pagos parciales para ir siguiendo cobros que llegan de a partes.</div>
+  </section>
+
+  <!-- ASISTENCIA -->
+  <section class="section" id="asistencia">
+    <div class="section-header">
+      <span class="section-icon">🏛</span>
+      <div>
+        <div class="section-title">Tiempo en la institución</div>
+        <div class="section-subtitle">Registro automático de entrada y salida</div>
+      </div>
+    </div>
+    <p>Registra tu entrada y salida de la institución, ya sea de forma manual (botón en la pestaña) o <b>automática</b>, por dos métodos alternativos:</p>
+    <ul>
+      <li><b>📍 GPS</b> — un radio configurable alrededor de una ubicación guardada</li>
+      <li><b>📶 Red WiFi</b> — identifica las redes de la institución por su rango de IP local</li>
+    </ul>
+    <p>Cuando detecta que llegaste, registra la hora de entrada automáticamente y muestra un banner para que confirmes la salida cuando te vayas. Si hay una entrada sin salida registrada, el banner te lo recuerda.</p>
+    <div class="info">ℹ️ Los métodos GPS y WiFi son alternativos: si activás la detección WiFi, se usa en lugar del GPS. Ver la sección <a href="#wifi" style="color:var(--blue)">📶 Detección por red WiFi</a> para configurarla.</div>
+  </section>
+
+  <!-- FERIADOS -->
+  <section class="section" id="feriados">
+    <div class="section-header">
+      <span class="section-icon">🇺🇾</span>
+      <div>
+        <div class="section-title">Feriados</div>
+        <div class="section-subtitle">Feriados nacionales y propios de la institución</div>
+      </div>
+    </div>
+    <p><b>🇺🇾 Importar feriados UY</b> carga automáticamente todos los feriados nacionales del año seleccionado.</p>
+    <p>Con <b>+ Agregar</b> podés sumar feriados departamentales o días no laborables propios de tu institución (que no están en el calendario nacional).</p>
+    <p>Los feriados se usan para no contar esos días como jornada laboral en los cálculos de asistencia y horas.</p>
+  </section>
+
+  <!-- CONFIGURACIÓN -->
+  <section class="section" id="configuracion">
+    <div class="section-header">
+      <span class="section-icon">⚙</span>
+      <div>
+        <div class="section-title">Configuración general</div>
+        <div class="section-subtitle">Datos, backups y destino automático</div>
+      </div>
+    </div>
+    <p>Desde ⚙ Configuración accedés a:</p>
+    <ul>
+      <li>Datos del docente e institución</li>
+      <li>Detección por GPS (ubicación y radio) y por WiFi (ver más abajo)</li>
+      <li>Historial de los últimos 10 backups automáticos, con opción de restaurar cualquiera</li>
+      <li>Destino del backup automático: solo local, descarga de archivo, Google Drive, OneDrive, o carpeta local (Chrome/Edge desktop)</li>
+    </ul>
+  </section>
+
+  <!-- DRIVE -->
+  <section class="section" id="drive">
+    <div class="section-header">
+      <span class="section-icon">☁️</span>
+      <div>
+        <div class="section-title">Google Drive</div>
+        <div class="section-subtitle">Backup y restauración en la nube</div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="step-num"></div><div class="step-body">Creá un proyecto en <a href="https://console.cloud.google.com" target="_blank" style="color:var(--blue)">Google Cloud Console</a>, habilitá la Drive API y creá credenciales OAuth 2.0 (tipo "Aplicación web")</div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body">Agregá <code>https://eduardoguillermo.github.io</code> como origen de JavaScript autorizado</div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body">Pegá el Client ID en Configuración → Google Drive, y tocá "🔗 Conectar con Google Drive"</div></div>
+    </div>
+    <p>Los backups se guardan dentro de una carpeta dedicada llamada <code>GestionDocente</code> en tu Drive, con nombre <code>docente_bkup_AAAAMMDD_HHMM.json</code>.</p>
+    <p>Para restaurar: botón <b>"☁ Restaurar desde Drive"</b> → elegís un backup de la lista (ordenados del más reciente al más viejo) → "↩ Restaurar". Se hace un backup local automático del estado actual antes de restaurar, por seguridad.</p>
+    <div class="tip">💡 El token de conexión se guarda y se reutiliza automáticamente mientras esté vigente — no hace falta reconectar cada vez que abrís la app.</div>
+  </section>
+
+  <!-- WIFI -->
+  <section class="section" id="wifi">
+    <div class="section-header">
+      <span class="section-icon">📶</span>
+      <div>
+        <div class="section-title">Detección por red WiFi</div>
+        <div class="section-subtitle">Asistencia automática por red del trabajo</div>
+      </div>
+    </div>
+    <p>Activá el toggle "Activar detección WiFi" en Configuración. Requiere que el navegador tenga WebRTC habilitado.</p>
+    <div class="warning">⚠️ En <b>Brave</b>: andá a <code>brave://settings/privacy</code>, bajá hasta la sección WebRTC, y elegí <b>"Interfaces públicas y privadas por defecto"</b>. En Chrome/Edge/Firefox ya viene habilitado por defecto.</div>
+    <h3>Cómo maneja varias redes en el mismo lugar</h3>
+    <p>Cada red se identifica por su rango de IP local (<code>/24</code>). La app la memoriza sola la primera vez que te conectás a ella — no hace falta precargar nada.</p>
+    <div class="steps">
+      <div class="step"><div class="step-num"></div><div class="step-body">Parado en cada red del trabajo, tocá "🔍 Detectar red actual"</div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body">Se abre un modal para clasificarla: elegí "🏢 Red del trabajo" y, opcionalmente, ponele un nombre (ej: "Aula 3", "Sala de profesores")</div></div>
+      <div class="step"><div class="step-num"></div><div class="step-body">Repetilo para cada red distinta del edificio — todas se pueden marcar como trabajo</div></div>
+    </div>
+    <p>Una vez memorizadas, cuando el dispositivo detecta que estás en <b>cualquiera</b> de esas redes marcadas como trabajo, dispara el registro automático de entrada.</p>
+    <p>En la lista de "Redes memorizadas" podés editar el nombre/tipo de cada una con ✎, u olvidarla con ✕.</p>
+  </section>
+
+  <!-- CHANGELOG -->
+  <section class="section" id="changelog">
+    <div class="section-header">
+      <span class="section-icon">🧾</span>
+      <div>
+        <div class="section-title">Historial de cambios</div>
+        <div class="section-subtitle">Versiones recientes</div>
+      </div>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v1.52</span><span class="changelog-tag tag-docs">docs</span></div>
+      <ul class="changelog-list">
+        <li>Manual de usuario completo (este documento), con ayuda contextual (?) amarilla en cada sección</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v1.50</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Modal para clasificar redes WiFi en vez de <code>confirm()</code>, con posibilidad de nombrar cada red</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v1.49</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Restaurar backups desde la carpeta GestionDocente en Google Drive</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v1.48</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Backups de Google Drive organizados en carpeta dedicada "GestionDocente"</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v1.47</span><span class="changelog-tag tag-infra">infra</span></div>
+      <ul class="changelog-list">
+        <li>Migración de Google Drive OAuth al flujo estándar (Google Identity Services), igual que el resto del ecosistema</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v1.46</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Registro de pagos recibidos del reintegro por días trabajados</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v1.45</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Monto realmente cobrado (distinto al gasto original) en Reintegros de gastos</li>
+      </ul>
+    </div>
+
+  </section>
+
+</main>
+</div>
+
+<script>
+const sections = document.querySelectorAll('.section');
+const links = document.querySelectorAll('.sidebar a');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const id = entry.target.id;
+      const active = document.querySelector(`.sidebar a[href="#${id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
