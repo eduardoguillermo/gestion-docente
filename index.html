@@ -376,7 +376,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.51</div>
+  <div class="splash-version">v1.52</div>
 </div>
 
 <div id="app" style="display:none">
@@ -395,7 +395,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.51</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.52</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -443,7 +443,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== DASHBOARD ========== -->
     <div class="tab active" id="tab-dashboard">
       <div class="section-header mb16">
-        <div class="section-title">Dashboard <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('dashboard')">❓</button></div>
+        <div class="section-title">Dashboard <button onclick="window.open('./instructivo.html#dashboard','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <select id="dash-periodo" style="display:none" onchange="renderDashboard()"><option value="">Todos los períodos</option></select>
           <button class="btn btn-secondary btn-sm" onclick="exportExcel()">⬇ Excel</button>
@@ -489,7 +489,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== CALENDARIO ========== -->
     <div class="tab" id="tab-calendario">
       <div class="section-header mb16">
-        <div class="section-title">Calendario <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('calendario')">❓</button></div>
+        <div class="section-title">Calendario <button onclick="window.open('./instructivo.html#calendario','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <button class="btn btn-secondary btn-sm" onclick="calPrev()">◀</button>
           <div class="periodo-badge" id="cal-mes-label">—</div>
@@ -526,7 +526,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== MATERIAS ========== -->
     <div class="tab" id="tab-materias">
       <div class="section-header mb16">
-        <div class="section-title">Materias <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('materias')">❓</button></div>
+        <div class="section-title">Materias <button onclick="window.open('./instructivo.html#materias','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <button class="btn btn-primary" onclick="openModal('modal-materia')">+ Nueva materia</button>
       </div>
       <div id="materias-list"></div>
@@ -535,7 +535,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== CLASES ========== -->
     <div class="tab" id="tab-clases">
       <div class="section-header mb16">
-        <div class="section-title">Clases <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('clases')">❓</button></div>
+        <div class="section-title">Clases <button onclick="window.open('./instructivo.html#clases','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <select id="filtro-materia-clases" style="width:auto" onchange="renderClases()">
             <option value="">Todas las materias</option>
@@ -557,7 +557,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== HORAS ========== -->
     <div class="tab" id="tab-horas">
       <div class="section-header mb16">
-        <div class="section-title">Horas <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('horas')">❓</button></div>
+        <div class="section-title">Horas <button onclick="window.open('./instructivo.html#horas','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <select id="filtro-periodo-horas" style="display:none" onchange="renderHoras()"><option value="">Todos los períodos</option></select>
           <select id="filtro-materia-horas" style="width:auto" onchange="populateSelectModulosHoras();renderHoras()">
@@ -574,7 +574,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== LIQUIDACIÓN ========== -->
     <div class="tab" id="tab-liquidacion">
       <div class="section-header mb16">
-        <div class="section-title">Liquidación <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('liquidacion')">❓</button></div>
+        <div class="section-title">Liquidación <button onclick="window.open('./instructivo.html#liquidacion','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <select id="filtro-periodo-liq" style="display:none" onchange="renderLiquidacion()"><option value="">Todos los períodos</option></select>
           <button class="btn btn-primary" onclick="openModal('modal-pago')">+ Registrar pago</button>
@@ -613,7 +613,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== ACTIVIDADES NO REMUNERADAS ========== -->
     <div class="tab" id="tab-actividades">
       <div class="section-header mb16">
-        <div class="section-title">Actividades no remuneradas <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('actividades')">❓</button></div>
+        <div class="section-title">Actividades no remuneradas <button onclick="window.open('./instructivo.html#actividades','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <select id="filtro-periodo-act" style="display:none" onchange="renderActividades()">
             <option value="">Todos los períodos</option>
@@ -647,7 +647,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== REPORTE ========== -->
     <div class="tab" id="tab-reporte">
       <div class="section-header mb16">
-        <div class="section-title">Reporte de horas <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('reporte')">❓</button></div>
+        <div class="section-title">Reporte de horas <button onclick="window.open('./instructivo.html#reporte','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <select id="rep-anio" style="width:auto" onchange="renderReporte()"></select>
           <button class="btn btn-secondary btn-sm" onclick="exportReporteExcel()">⬇ Excel</button>
@@ -671,7 +671,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== REINTEGROS ========== -->
     <div class="tab" id="tab-reintegros">
       <div class="section-header mb16">
-        <div class="section-title">Reintegros de gastos <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('reintegros')">❓</button></div>
+        <div class="section-title">Reintegros de gastos <button onclick="window.open('./instructivo.html#reintegros','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <select id="filtro-anio-rein" style="width:auto" onchange="renderReintegros()"></select>
           <select id="filtro-estado-rein" style="width:auto" onchange="renderReintegros()">
@@ -732,7 +732,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== ASISTENCIA ========== -->
     <div class="tab" id="tab-asistencia">
       <div class="section-header mb16">
-        <div class="section-title">Tiempo en la institución <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('asistencia')">❓</button></div>
+        <div class="section-title">Tiempo en la institución <button onclick="window.open('./instructivo.html#asistencia','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <select id="asist-mes" style="width:auto" onchange="renderAsistencia()"></select>
           <select id="asist-anio" style="width:auto" onchange="renderAsistencia()"></select>
@@ -757,7 +757,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <!-- ========== FERIADOS ========== -->
     <div class="tab" id="tab-feriados">
       <div class="section-header mb16">
-        <div class="section-title">Feriados Uruguay <button class="btn-icon" style="font-size:13px;vertical-align:middle" title="Ayuda" onclick="abrirAyuda('feriados')">❓</button></div>
+        <div class="section-title">Feriados Uruguay <button onclick="window.open('./instructivo.html#feriados','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:6px;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3)">?</button></div>
         <div class="flex gap8">
           <select id="fer-anio" style="width:auto" onchange="renderFeriados()">
           </select>
@@ -1011,19 +1011,6 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="cerrarModalRed(null)">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarClasificacionRed()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Ayuda contextual -->
-<div class="modal-backdrop" id="modal-ayuda">
-  <div class="modal" style="max-width:520px">
-    <div class="modal-title" id="ayuda-titulo">Ayuda
-      <button class="btn-icon" onclick="closeModal('modal-ayuda')">✕</button>
-    </div>
-    <div id="ayuda-contenido" style="font-size:14px;line-height:1.6;color:var(--txt2)"></div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-ayuda')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -2829,108 +2816,7 @@ async function restaurarDesdeGDrive(fileId, nombre) {
   } catch(e) { toast('Error al restaurar desde Drive: ' + e.message, 'err'); }
 }
 
-const AYUDA_SECCIONES = {
-  dashboard: {
-    titulo: '📊 Dashboard',
-    html: `
-      <p>Resumen general de tu actividad docente: horas dadas vs. previstas, devengado del período, próximas clases y accesos rápidos.</p>
-      <p>El botón <b>⬇ Excel</b> exporta los datos visibles del dashboard a una planilla.</p>
-    `
-  },
-  calendario: {
-    titulo: '📅 Calendario',
-    html: `
-      <p>Vista mensual de todas tus clases y actividades. Cada evento se colorea según la materia.</p>
-      <p>Tocá un día para ver el detalle y marcar clases como <b>dadas</b> directamente desde ahí.</p>
-      <p>Usá <b>◀ ▶</b> para moverte entre meses.</p>
-    `
-  },
-  materias: {
-    titulo: '📚 Materias',
-    html: `
-      <p>Acá cargás cada materia que dictás, con:</p>
-      <ul style="margin:0 0 0 18px;padding:0">
-        <li><b>Tipos de hora</b> con su valor (ej: Teórica 800/h, Práctica 650/h) — necesarios para calcular el devengado</li>
-        <li><b>Color</b> identificador, usado en calendario y gráficos</li>
-      </ul>
-      <p>Una materia necesita al menos un tipo de hora cargado para poder guardarse.</p>
-    `
-  },
-  clases: {
-    titulo: '✏ Clases',
-    html: `
-      <p>Registro de cada clase individual: fecha, materia, horario, tipo de hora y tema.</p>
-      <p>Estados: <b>Planificada</b> (clase futura) y <b>Dada ✓</b> (ya ocurrió — genera devengado).</p>
-      <p>Podés cargar clases a mano o importarlas desde Google Calendar (exportá el <code>.ics</code> y subilo con "📅 Importar desde Google Calendar").</p>
-      <p>Marcar una clase como dada se puede hacer desde acá, desde el Calendario o desde el Dashboard.</p>
-    `
-  },
-  horas: {
-    titulo: '⏱ Horas',
-    html: `
-      <p>Detalle de horas previstas vs. horas efectivamente dadas, filtrable por materia y tipo de hora.</p>
-      <p>Sirve para ver de un vistazo si vas al día con la planificación de cada materia.</p>
-    `
-  },
-  liquidacion: {
-    titulo: '💰 Liquidación',
-    html: `
-      <p>Compara lo <b>devengado</b> (lo que corresponde cobrar según las clases dadas) contra lo <b>percibido</b> (lo que efectivamente cobraste).</p>
-      <p><b>+ Registrar pago</b> carga un cobro con fecha, monto y tipo (mensual, parcial, pago final, adelanto, liquidación). El saldo pendiente se recalcula solo.</p>
-    `
-  },
-  actividades: {
-    titulo: '🤝 Actividades no remuneradas',
-    html: `
-      <p>Registrá reuniones, capacitaciones, extensión, investigación y cualquier tarea docente que no se cobra por hora.</p>
-      <p>Aparecen en el calendario y en el reporte, pero <b>no generan devengado</b> — es solo para tener registro de tu carga real de trabajo.</p>
-    `
-  },
-  reporte: {
-    titulo: '📈 Reporte de horas',
-    html: `
-      <p>Reporte anual consolidado de horas dadas, devengado y detalle por materia.</p>
-      <p><b>⬇ Excel</b> exporta el reporte completo del año seleccionado.</p>
-    `
-  },
-  reintegros: {
-    titulo: '⛽ Reintegros',
-    html: `
-      <p>Tiene dos partes independientes:</p>
-      <p><b>1. Gastos a reintegrar</b> — cargá comprobantes puntuales (combustible, transporte, materiales, etc.) con su estado: pendiente, en trámite o cobrado. El botón ✓ marca como cobrado al instante.</p>
-      <p><b>2. Días con clase — ciclos 21 al 20</b> — calcula automáticamente cuántos días diste clase (contando una sola vez aunque hayas dado varias clases ese día) dentro de cada ciclo de facturación (21 de un mes al 20 del siguiente), multiplicado por un importe por día que configurás vos.</p>
-      <p><b>Pagos recibidos</b> — registrá ahí cuándo y cuánto cobraste del reintegro por días (podés cargar varios pagos parciales).</p>
-    `
-  },
-  asistencia: {
-    titulo: '📍 Tiempo en la institución',
-    html: `
-      <p>Registra automáticamente tu entrada y salida cuando detecta que estás en el trabajo, por <b>GPS</b> (radio configurable alrededor de una ubicación) o por <b>red WiFi</b> (identifica las redes del trabajo por su rango de IP local).</p>
-      <p>También podés registrar entrada/salida a mano con el botón de arriba.</p>
-      <p>La detección WiFi se activa y configura en <b>⚙ Configuración → Detección por red WiFi</b>.</p>
-    `
-  },
-  feriados: {
-    titulo: '🇺🇾 Feriados',
-    html: `
-      <p><b>🇺🇾 Importar feriados UY</b> carga automáticamente todos los feriados nacionales del año seleccionado.</p>
-      <p>Con <b>+ Agregar</b> podés sumar feriados departamentales o días no laborables propios de tu institución.</p>
-      <p>Los feriados se usan para no contar esos días como jornada laboral en los cálculos de asistencia y horas.</p>
-    `
-  }
-};
-
-function abrirAyuda(clave) {
-  const info = AYUDA_SECCIONES[clave];
-  if (!info) return;
-  document.getElementById('ayuda-titulo').innerHTML = info.titulo + '<button class="btn-icon" onclick="closeModal(\'modal-ayuda\')">✕</button>';
-  document.getElementById('ayuda-contenido').innerHTML = info.html;
-  openModal('modal-ayuda');
-}
-
 function conectarOneDrive() {
-
-
   const clientId = document.getElementById('cfg-onedrive-client-id').value.trim();
   if (!clientId) { toast('Ingresá el Client ID de Microsoft','err'); return; }
   const cfg = getBkupCfg(); cfg.onedriveClientId = clientId; saveBkupCfg(cfg);
