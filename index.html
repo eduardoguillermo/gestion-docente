@@ -376,7 +376,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.52</div>
+  <div class="splash-version">v1.53</div>
 </div>
 
 <div id="app" style="display:none">
@@ -395,7 +395,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.52</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.53</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -1590,15 +1590,32 @@ async function cerrarSesion() {
     }
   }
   // 2. Snapshot a localStorage
-  hacerBackup(false);
+  let msgSnapshot;
+  try {
+    hacerBackup(false);
+    msgSnapshot = '✅ Snapshot local guardado.';
+  } catch(e) {
+    msgSnapshot = '⚠️ No se pudo guardar el snapshot local.';
+  }
   // 3. Si hay token Drive/OneDrive, subir backup
   const cfg = getBkupCfg();
-  if ((cfg.destino === 'gdrive' && _gdriveToken) || (cfg.destino === 'onedrive' && _onedriveToken)) {
-    try { await enviarBkupExterno(JSON.stringify(DB)); } catch(e) {}
+  let msgExterno = '';
+  if (cfg.destino === 'gdrive' && _gdriveToken) {
+    try { await enviarBkupExterno(JSON.stringify(DB)); msgExterno = '\n☁️ Backup subido a Google Drive.'; }
+    catch(e) { msgExterno = '\n⚠️ No se pudo subir a Google Drive.'; }
+  } else if (cfg.destino === 'onedrive' && _onedriveToken) {
+    try { await enviarBkupExterno(JSON.stringify(DB)); msgExterno = '\n☁️ Backup subido a OneDrive.'; }
+    catch(e) { msgExterno = '\n⚠️ No se pudo subir a OneDrive.'; }
+  } else if (cfg.destino === 'descarga') {
+    msgExterno = '\n📥 Backup descargado como archivo.';
+  } else if (cfg.destino === 'carpeta') {
+    msgExterno = '\n📁 Backup guardado en carpeta local.';
   }
-  // 4. Cerrar sesión
-  localStorage.removeItem(AUTH_KEY);
-  location.reload();
+  // 4. Cartel de confirmación con el resumen de backups, y cerrar sesión
+  if (confirm(msgSnapshot + msgExterno + '\n\n¿Cerrar sesión?')) {
+    localStorage.removeItem(AUTH_KEY);
+    location.reload();
+  }
 }
 
 function entrarApp() {
