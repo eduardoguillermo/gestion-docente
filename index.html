@@ -376,7 +376,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.53</div>
+  <div class="splash-version">v1.54</div>
 </div>
 
 <div id="app" style="display:none">
@@ -395,7 +395,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.53</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.54</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -2555,17 +2555,34 @@ let _gdriveTokenClient = null;
 let _gdriveFolderId = null;
 const GDRIVE_TOKEN_KEY = 'docente_gdrive_token';
 const GDRIVE_CARPETA = 'GestionDocente';
+// El backup de Gestión Docente va SIEMPRE al Drive de Mariela — no se permite
+// conectar con ninguna otra cuenta de Google.
+const GDRIVE_CUENTA_REQUERIDA = 'margonqui@gmail.com';
 
-function guardarTokenGDrive(token, expiresInSeg) {
+function guardarTokenGDrive(token, expiresInSeg, email) {
   const vencimiento = Date.now() + (expiresInSeg * 1000) - 60000; // 1 min de margen
-  localStorage.setItem(GDRIVE_TOKEN_KEY, JSON.stringify({ token, vencimiento }));
+  localStorage.setItem(GDRIVE_TOKEN_KEY, JSON.stringify({ token, vencimiento, email }));
 }
 function tokenGDriveGuardadoValido() {
   try {
     const raw = localStorage.getItem(GDRIVE_TOKEN_KEY);
     if (!raw) return null;
-    const { token, vencimiento } = JSON.parse(raw);
+    const { token, vencimiento, email } = JSON.parse(raw);
+    if ((email || '').toLowerCase() !== GDRIVE_CUENTA_REQUERIDA) return null; // token de otra cuenta: no sirve
     return Date.now() < vencimiento ? token : null;
+  } catch (e) { return null; }
+}
+// Confirma con la Drive API a qué cuenta de Google pertenece el token recién
+// obtenido. Necesario porque `hint` solo sugiere la cuenta en el selector —
+// no impide que se elija otra — así que la app valida después de conectar.
+async function verificarCuentaGDrive(token) {
+  try {
+    const resp = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return (data.user && data.user.emailAddress) ? data.user.emailAddress.toLowerCase() : null;
   } catch (e) { return null; }
 }
 
@@ -2727,16 +2744,26 @@ function conectarGDrive() {
   _gdriveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: 'https://www.googleapis.com/auth/drive.file',
-    callback: (resp) => {
+    hint: GDRIVE_CUENTA_REQUERIDA,
+    callback: async (resp) => {
       if (resp.error) { toast('Error al conectar con Google Drive','err'); return; }
+      const email = await verificarCuentaGDrive(resp.access_token);
+      if (email !== GDRIVE_CUENTA_REQUERIDA) {
+        fetch('https://oauth2.googleapis.com/revoke?token=' + resp.access_token, { method: 'POST' }).catch(()=>{});
+        _gdriveToken = null;
+        localStorage.removeItem(GDRIVE_TOKEN_KEY);
+        document.getElementById('gdrive-status').textContent = 'No conectado';
+        toast(`Esta app solo se conecta al Drive de Mariela (${GDRIVE_CUENTA_REQUERIDA}). Elegí esa cuenta en el selector de Google.`,'err');
+        return;
+      }
       _gdriveToken = resp.access_token;
-      guardarTokenGDrive(_gdriveToken, resp.expires_in || 3600);
-      document.getElementById('gdrive-status').textContent = '✓ Conectado';
-      toast('Google Drive conectado ✓');
+      guardarTokenGDrive(_gdriveToken, resp.expires_in || 3600, email);
+      document.getElementById('gdrive-status').textContent = '✓ Conectado (Mariela)';
+      toast('Google Drive de Mariela conectado ✓');
     },
     error_callback: (err) => { toast('No se pudo conectar con Google Drive','err'); }
   });
-  _gdriveTokenClient.requestAccessToken();
+  _gdriveTokenClient.requestAccessToken({ prompt: 'select_account', hint: GDRIVE_CUENTA_REQUERIDA });
 }
 
 let _gdriveFolderPromise = null;
