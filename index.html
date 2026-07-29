@@ -376,7 +376,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
     <button id="login-btn" onclick="intentarLogin()">Ingresar</button>
   </div>
 
-  <div class="splash-version">v1.54</div>
+  <div class="splash-version">v1.57</div>
 </div>
 
 <div id="app" style="display:none">
@@ -395,7 +395,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
       <span style="font-family:'Dancing Script',cursive;font-size:15px;color:var(--acc2);opacity:0.75;letter-spacing:0.3px">Development by Guille</span>
     </div>
     <div class="header-right">
-      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.54</span>
+      <span style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--bg2);border:1px solid var(--brd);border-radius:20px">v1.57</span>
       <button class="btn btn-secondary btn-sm" onclick="openConfigModal()">⚙ Configurar</button>
       <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
     </div>
@@ -809,6 +809,18 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 </div>
 
 <!-- ===== MODALES ===== -->
+
+<!-- Conectar Drive antes de salir (modal liviano, no navega a Ajustes) -->
+<div class="modal-backdrop" id="modal-conectar-drive-salida">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">☁️ Backup en Drive requerido
+      <button class="btn-icon" onclick="closeModal('modal-conectar-drive-salida')">✕</button>
+    </div>
+    <div class="text-muted text-sm mb12">Para salir de Gestión Docente hace falta subir el backup a Google Drive. Conectá la cuenta de Mariela y volvé a tocar "Salir".</div>
+    <button class="btn btn-primary" style="width:100%" onclick="conectarGDrive()">🔗 Conectar con Google Drive</button>
+    <div id="gdrive-status-salida" class="text-muted text-sm" style="margin-top:8px;text-align:center"></div>
+  </div>
+</div>
 
 <!-- Configuración -->
 <div class="modal-backdrop" id="modal-config">
@@ -1574,6 +1586,20 @@ async function intentarLogin() {
   }
 }
 
+// Sube el backup a Drive reintentando las veces que haga falta. Devuelve
+// 'ok' si se subió, 'forzado' si el usuario decidió explícitamente salir
+// sin sincronizar, o 'abortar' si prefiere quedarse a reintentar después.
+async function subirBackupDriveConReintento() {
+  while (true) {
+    const ok = await subirAGDrive(JSON.stringify(DB));
+    if (ok) return 'ok';
+    const reintentar = confirm('⚠️ No se pudo subir el backup a Google Drive.\n\nAceptar = reintentar.\nCancelar = decidir si salir sin sincronizar.');
+    if (reintentar) continue;
+    const forzar = confirm('¿Confirmás salir SIN backup en Drive? El respaldo en la nube va a quedar desactualizado hasta que sincronices con éxito la próxima vez.');
+    return forzar ? 'forzado' : 'abortar';
+  }
+}
+
 async function cerrarSesion() {
   // 1. Verificar asistencia pendiente
   const hoyStr = hoy();
@@ -1597,12 +1623,21 @@ async function cerrarSesion() {
   } catch(e) {
     msgSnapshot = '⚠️ No se pudo guardar el snapshot local.';
   }
-  // 3. Si hay token Drive/OneDrive, subir backup
+  // 3. Si el destino configurado es Google Drive, ese backup es OBLIGATORIO
+  // para poder salir: no se cierra sesión con un backup pendiente, salvo que
+  // el usuario fuerce la salida explícitamente ante un error persistente.
   const cfg = getBkupCfg();
   let msgExterno = '';
-  if (cfg.destino === 'gdrive' && _gdriveToken) {
-    try { await enviarBkupExterno(JSON.stringify(DB)); msgExterno = '\n☁️ Backup subido a Google Drive.'; }
-    catch(e) { msgExterno = '\n⚠️ No se pudo subir a Google Drive.'; }
+  if (cfg.destino === 'gdrive') {
+    if (!_gdriveToken) {
+      openModal('modal-conectar-drive-salida');
+      return;
+    }
+    const resultado = await subirBackupDriveConReintento();
+    if (resultado === 'abortar') return;
+    msgExterno = resultado === 'ok'
+      ? '\n☁️ Backup subido a Google Drive.'
+      : '\n⚠️ Backup en Drive PENDIENTE — saliste sin sincronizar.';
   } else if (cfg.destino === 'onedrive' && _onedriveToken) {
     try { await enviarBkupExterno(JSON.stringify(DB)); msgExterno = '\n☁️ Backup subido a OneDrive.'; }
     catch(e) { msgExterno = '\n⚠️ No se pudo subir a OneDrive.'; }
@@ -2722,9 +2757,15 @@ async function guardarEnCarpetaLocal(data) {
   } catch(e) { toast('Error carpeta: ' + e.message,'err'); descargarBkupArchivo(data); }
 }
 
+function actualizarEstadoGDriveUI(texto) {
+  const a = document.getElementById('gdrive-status');
+  const b = document.getElementById('gdrive-status-salida');
+  if (a) a.textContent = texto;
+  if (b) b.textContent = texto;
+}
 function conectarGDrive() {
   const clientId = document.getElementById('cfg-gdrive-client-id').value.trim();
-  if (!clientId) { toast('Ingresá el Client ID de Google','err'); return; }
+  if (!clientId) { toast('Ingresá el Client ID de Google en Ajustes → Backup y restauración','err'); return; }
   const cfg = getBkupCfg(); cfg.gdriveClientId = clientId; saveBkupCfg(cfg);
 
   if (!window.google || !google.accounts) {
@@ -2736,8 +2777,12 @@ function conectarGDrive() {
   const guardado = tokenGDriveGuardadoValido();
   if (guardado) {
     _gdriveToken = guardado;
-    document.getElementById('gdrive-status').textContent = '✓ Conectado';
+    actualizarEstadoGDriveUI('✓ Conectado (Mariela)');
     toast('Google Drive ya estaba conectado ✓');
+    if (document.getElementById('modal-conectar-drive-salida').classList.contains('open')) {
+      closeModal('modal-conectar-drive-salida');
+      toast('Ahora sí — volvé a tocar "Salir" para completar el backup.');
+    }
     return;
   }
 
@@ -2752,14 +2797,18 @@ function conectarGDrive() {
         fetch('https://oauth2.googleapis.com/revoke?token=' + resp.access_token, { method: 'POST' }).catch(()=>{});
         _gdriveToken = null;
         localStorage.removeItem(GDRIVE_TOKEN_KEY);
-        document.getElementById('gdrive-status').textContent = 'No conectado';
+        actualizarEstadoGDriveUI('No conectado');
         toast(`Esta app solo se conecta al Drive de Mariela (${GDRIVE_CUENTA_REQUERIDA}). Elegí esa cuenta en el selector de Google.`,'err');
         return;
       }
       _gdriveToken = resp.access_token;
       guardarTokenGDrive(_gdriveToken, resp.expires_in || 3600, email);
-      document.getElementById('gdrive-status').textContent = '✓ Conectado (Mariela)';
+      actualizarEstadoGDriveUI('✓ Conectado (Mariela)');
       toast('Google Drive de Mariela conectado ✓');
+      if (document.getElementById('modal-conectar-drive-salida').classList.contains('open')) {
+        closeModal('modal-conectar-drive-salida');
+        toast('Ahora sí — volvé a tocar "Salir" para completar el backup.');
+      }
     },
     error_callback: (err) => { toast('No se pudo conectar con Google Drive','err'); }
   });
@@ -2791,7 +2840,7 @@ async function ensureGDriveFolder() {
 }
 
 async function subirAGDrive(data) {
-  if (!_gdriveToken) { toast('Conectá Google Drive primero','err'); return; }
+  if (!_gdriveToken) { toast('Conectá Google Drive primero','err'); return false; }
   const nombre = `docente_bkup_${bkupTimestamp()}.json`;
   try {
     const folderId = await ensureGDriveFolder();
@@ -2802,9 +2851,9 @@ async function subirAGDrive(data) {
     const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + _gdriveToken }, body: form
     });
-    if (res.ok) toast(`☁ Backup en Google Drive (carpeta ${GDRIVE_CARPETA}): ${nombre}`);
-    else throw new Error(await res.text());
-  } catch(e) { toast('Error Drive: ' + e.message,'err'); descargarBkupArchivo(data); }
+    if (res.ok) { toast(`☁ Backup en Google Drive (carpeta ${GDRIVE_CARPETA}): ${nombre}`); return true; }
+    throw new Error(await res.text());
+  } catch(e) { toast('Error Drive: ' + e.message,'err'); descargarBkupArchivo(data); return false; }
 }
 
 async function abrirRestaurarGDrive() {
@@ -2896,10 +2945,10 @@ async function subirAOneDrive(data) {
 async function enviarBkupExterno(data) {
   const cfg = getBkupCfg();
   switch(cfg.destino) {
-    case 'descarga': descargarBkupArchivo(data); break;
-    case 'gdrive':   await subirAGDrive(data); break;
-    case 'onedrive': await subirAOneDrive(data); break;
-    case 'carpeta':  await guardarEnCarpetaLocal(data); break;
+    case 'descarga': descargarBkupArchivo(data); return true;
+    case 'gdrive':   return await subirAGDrive(data);
+    case 'onedrive': await subirAOneDrive(data); return true;
+    case 'carpeta':  await guardarEnCarpetaLocal(data); return true;
   }
 }
 
